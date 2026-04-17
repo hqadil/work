@@ -246,6 +246,10 @@ textarea { resize:vertical;min-height:80px; }
       <label>Supervisor <span class="req">*</span></label>
       <input type="text" id="f-supervisor" placeholder="Supervisor name"/>
     </div>
+    <div class="form-group">
+      <label>Technician Name(s) <span style="font-size:11px;color:var(--slate-400)">(optional — comma separated)</span></label>
+      <input type="text" id="f-technicians" placeholder="e.g. Raju Kumar, Suresh P"/>
+    </div>
   </div>
 
   <button class="submit-btn" id="submit-btn" onclick="submitReport()">Submit Work Report</button>
@@ -408,6 +412,7 @@ function buildPayload(isDraft) {
     notes: document.getElementById('f-notes').value || null,
     issues_logged: document.getElementById('f-issues').value || null,
     supervisor: document.getElementById('f-supervisor').value || null,
+    technician_names: document.getElementById('f-technicians').value || null,
     estimated_amount: bookingData?.total_amount || null,
     updated_at: new Date().toISOString()
   };
@@ -426,6 +431,7 @@ function loadDraftValues(d) {
   if (d.notes) document.getElementById('f-notes').value = d.notes;
   if (d.issues_logged) document.getElementById('f-issues').value = d.issues_logged;
   if (d.supervisor) document.getElementById('f-supervisor').value = d.supervisor;
+  if (d.technician_names) document.getElementById('f-technicians').value = d.technician_names;
 }
 
 // Simple inline toast for this page (no app.js loaded)
