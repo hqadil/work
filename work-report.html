@@ -1,187 +1,390 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Handy sQuad — Work Report</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>Handy sQuad · Work Report with PDF</title>
+<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- PDF generation library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- External config.js (must expose SUPABASE_URL, SUPABASE_ANON_KEY) -->
 <script src="config.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
 <style>
-*, *::before, *::after { box-sizing:border-box;margin:0;padding:0; }
-:root {
-  --blue-700:#1d4ed8; --blue-500:#3b82f6; --blue-100:#dbeafe; --blue-50:#eff6ff;
-  --white:#fff; --slate-800:#1e293b; --slate-600:#475569; --slate-400:#94a3b8;
-  --slate-200:#e2e8f0; --slate-100:#f1f5f9; --slate-50:#f8fafc;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color:var(--slate-800);min-height:100vh;padding:0; }
 
-/* Header */
-.app-header {
-  background:linear-gradient(135deg,#1e3a8a,var(--blue-700));
-  padding:16px 20px;display:flex;align-items:center;gap:14px;
-  position:sticky;top:0;z-index:50;
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #f5f7fb;
+  color: #0f172a;
+  line-height: 1.4;
 }
-.header-icon { width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center; }
-.header-title { font-size:17px;font-weight:800;color:#fff; }
-.header-sub { font-size:11px;color:#93c5fd;font-weight:600; }
 
-/* States */
-#state-loading,.state-error,.state-success { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:40px 20px;text-align:center; }
-.state-icon { font-size:56px;margin-bottom:16px; }
-.state-title { font-size:20px;font-weight:800;color:var(--slate-800);margin-bottom:8px; }
-.state-desc { font-size:14px;color:var(--slate-400);max-width:300px; }
-.spinner { width:40px;height:40px;border:3px solid var(--slate-200);border-top-color:var(--blue-500);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px; }
-@keyframes spin { to { transform:rotate(360deg); } }
-
-/* Form */
-.form-wrap { max-width:540px;margin:0 auto;padding:20px 16px 40px; }
-
-.job-card {
-  background:linear-gradient(135deg,var(--blue-700),var(--blue-500));
-  border-radius:18px;padding:22px;margin-bottom:24px;color:#fff;
+.app-bar {
+  background: linear-gradient(98deg, #0a2540 0%, #1e4a76 100%);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
-.job-card-header { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.7;margin-bottom:8px; }
-.job-customer { font-size:22px;font-weight:800;margin-bottom:4px; }
-.job-meta { font-size:13px;opacity:.85;margin-bottom:16px; }
-.job-pills { display:flex;flex-wrap:wrap;gap:8px; }
-.job-pill { background:rgba(255,255,255,.18);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600; }
-.job-amount { background:rgba(255,255,255,.22);border-radius:12px;padding:12px 16px;margin-top:14px;display:flex;justify-content:space-between;align-items:center; }
-.job-amount-label { font-size:11px;opacity:.7;font-weight:600; }
-.job-amount-val { font-size:18px;font-weight:800; }
-
-.section-card { background:var(--white);border-radius:16px;border:1px solid var(--slate-200);padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04); }
-.section-title { font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--blue-700);margin-bottom:16px;display:flex;align-items:center;gap:8px; }
-.form-group { margin-bottom:16px; }
-label { display:block;font-size:13px;font-weight:600;color:var(--slate-600);margin-bottom:6px; }
-.req { color:#dc2626; }
-input,select,textarea {
-  width:100%;padding:12px 14px;border:2px solid var(--slate-200);border-radius:11px;
-  font-size:15px;color:var(--slate-800);background:var(--slate-50);font-family:inherit;
-  transition:border .2s,box-shadow .2s,background .2s;
+.icon-badge {
+  width: 42px;
+  height: 42px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-input:focus,select:focus,textarea:focus { outline:none;border-color:var(--blue-500);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12); }
-textarea { resize:vertical;min-height:80px; }
+.app-title {
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.3px;
+  color: white;
+}
+.app-sub {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #b9d9ff;
+}
 
-.time-btn-group { display:flex;gap:8px; }
-.time-btn-group input { flex:1; }
+/* state containers */
+.state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 24px;
+  text-align: center;
+}
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #1e4a76;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-bottom: 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.state-icon { font-size: 48px; margin-bottom: 16px; }
+.state-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+.state-desc { color: #475569; font-size: 0.9rem; max-width: 280px; }
+
+/* form wrapper */
+.form-wrap {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.job-hero {
+  background: linear-gradient(115deg, #0f2b4d, #1e5a8a);
+  border-radius: 28px;
+  padding: 22px 24px;
+  margin-bottom: 24px;
+  color: white;
+  box-shadow: 0 12px 24px -12px rgba(0,0,0,0.25);
+}
+.job-hero-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.customer-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+.meta-row {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  margin-bottom: 16px;
+}
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+.pill {
+  background: rgba(255,255,255,0.18);
+  border-radius: 40px;
+  padding: 6px 14px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.amount-row {
+  background: rgba(0,0,0,0.2);
+  border-radius: 18px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.amount-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+.amount-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.card {
+  background: white;
+  border-radius: 24px;
+  border: 1px solid #e9edf2;
+  padding: 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+.card-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #1e4a76;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-group {
+  margin-bottom: 18px;
+}
+label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+.req {
+  color: #dc2626;
+}
+input, select, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #ffffff;
+  transition: 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #1e4a76;
+  box-shadow: 0 0 0 3px rgba(30,74,118,0.1);
+}
+.time-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 .now-btn {
-  padding:12px 14px;background:var(--blue-50);border:2px solid var(--blue-100);border-radius:11px;
-  font-size:12px;font-weight:700;color:var(--blue-700);cursor:pointer;white-space:nowrap;transition:all .2s;
+  background: #f0f4f9;
+  border: 1.5px solid #e2e8f0;
+  padding: 0 16px;
+  border-radius: 40px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1e4a76;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 0.2s;
 }
-.now-btn:hover { background:var(--blue-100); }
-
-.grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
-
+.now-btn:hover {
+  background: #e4eaf1;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
 .submit-btn {
-  width:100%;padding:17px;background:linear-gradient(135deg,var(--blue-700),var(--blue-500));
-  color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;
-  margin-top:8px;box-shadow:0 6px 20px rgba(59,130,246,.35);font-family:inherit;
-  transition:all .2s;
+  width: 100%;
+  background: linear-gradient(105deg, #0f2b4d, #1e5a8a);
+  border: none;
+  padding: 16px;
+  border-radius: 44px;
+  color: white;
+  font-weight: 800;
+  font-size: 1rem;
+  margin-top: 8px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  transition: transform 0.1s ease;
 }
-.submit-btn:hover { transform:translateY(-2px);box-shadow:0 10px 28px rgba(59,130,246,.45); }
-.submit-btn:disabled { opacity:.6;cursor:not-allowed;transform:none; }
-
+.submit-btn:active { transform: scale(0.98); }
+.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .draft-btn {
-  width:100%;padding:13px;background:var(--slate-100);color:var(--slate-600);
-  border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;
-  margin-top:10px;font-family:inherit;transition:background .2s;
+  width: 100%;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 12px;
+  border-radius: 44px;
+  font-weight: 600;
+  margin-top: 12px;
+  cursor: pointer;
+  color: #1e293b;
 }
-.draft-btn:hover { background:var(--slate-200); }
-
-.submitted-view { display:none;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:40px 20px;text-align:center; }
-.submitted-view.show { display:flex; }
-.success-circle { width:88px;height:88px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 8px 28px rgba(34,197,94,.3); }
+.success-view {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 65vh;
+  padding: 24px;
+  text-align: center;
+}
+.success-view.show {
+  display: flex;
+}
+.success-icon {
+  width: 80px;
+  height: 80px;
+  background: #10b981;
+  border-radius: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: 0 12px 20px -8px rgba(16,185,129,0.3);
+}
+.summary-card {
+  background: #f8fafc;
+  border-radius: 24px;
+  padding: 20px;
+  margin-top: 20px;
+  text-align: left;
+  border: 1px solid #e2edf2;
+  max-width: 360px;
+  width: 100%;
+}
+.toast-msg {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 60px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 999;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
 </style>
 </head>
 <body>
 
-<div class="app-header">
-  <div class="header-icon">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-    </svg>
+<div class="app-bar">
+  <div class="icon-badge">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
   </div>
   <div>
-    <div class="header-title">Handy sQuad</div>
-    <div class="header-sub" id="header-booking-id">Work Report Form</div>
+    <div class="app-title">Handy sQuad</div>
+    <div class="app-sub" id="headerRef">Work Report</div>
   </div>
 </div>
 
 <!-- Loading -->
-<div id="state-loading" style="display:flex">
+<div id="loadingState" class="state-container">
   <div class="spinner"></div>
-  <div style="color:var(--slate-400);font-size:14px">Loading job details…</div>
+  <div class="state-title">Fetching job details</div>
+  <div class="state-desc">Loading booking information...</div>
 </div>
 
-<!-- Error -->
-<div class="state-error" id="state-error" style="display:none">
+<!-- Error state -->
+<div id="errorState" class="state-container" style="display: none;">
   <div class="state-icon">⚠️</div>
-  <div class="state-title">Booking Not Found</div>
-  <div class="state-desc">This link is invalid or the booking doesn't exist. Contact your supervisor.</div>
+  <div class="state-title">Booking not found</div>
+  <div class="state-desc">Invalid link or missing booking. Please contact supervisor.</div>
 </div>
 
 <!-- Already submitted -->
-<div class="state-error" id="state-submitted" style="display:none">
+<div id="submittedState" class="state-container" style="display: none;">
   <div class="state-icon">🔒</div>
-  <div class="state-title">Report Already Submitted</div>
-  <div class="state-desc">This work report has already been filled. Contact scheduling if you need to make changes.</div>
+  <div class="state-title">Report already submitted</div>
+  <div class="state-desc">This work report has been locked. Changes are not allowed.</div>
 </div>
 
-<!-- Form -->
-<div class="form-wrap" id="form-wrap" style="display:none">
-  <!-- Job Summary Card -->
-  <div class="job-card">
-    <div class="job-card-header">Job Summary · Read Only</div>
-    <div class="job-customer" id="jc-customer">—</div>
-    <div class="job-meta" id="jc-meta">—</div>
-    <div class="job-pills">
-      <div class="job-pill" id="jc-segment">—</div>
-      <div class="job-pill" id="jc-date">—</div>
-      <div class="job-pill" id="jc-time">—</div>
+<!-- Main Form -->
+<div id="formContainer" class="form-wrap" style="display: none;">
+  <!-- Job summary -->
+  <div class="job-hero">
+    <div class="job-hero-label">JOB SUMMARY · READ ONLY</div>
+    <div class="customer-name" id="custName">—</div>
+    <div class="meta-row" id="custMeta">—</div>
+    <div class="pill-group">
+      <span class="pill" id="segmentPill">—</span>
+      <span class="pill" id="datePill">—</span>
+      <span class="pill" id="timePill">—</span>
     </div>
-    <div class="job-amount">
-      <div><div class="job-amount-label">Work Details</div><div id="jc-work" style="font-size:13px;font-weight:600;margin-top:3px">—</div></div>
-      <div style="text-align:right"><div class="job-amount-label">Booking Amount</div><div class="job-amount-val" id="jc-amount">—</div></div>
+    <div class="amount-row">
+      <div>
+        <div class="amount-label">WORK TYPE</div>
+        <div style="font-size:0.8rem; font-weight:600; margin-top:4px" id="workType">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="amount-label">BOOKING AMOUNT</div>
+        <div class="amount-value" id="bookingAmount">₹0</div>
+      </div>
     </div>
   </div>
 
-  <!-- Section 2: Time & Status -->
-  <div class="section-card">
-    <div class="section-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Time Tracking & Status
+  <!-- Time & Status -->
+  <div class="card">
+    <div class="card-title">⏱️ Time Tracking & Status</div>
+    <div class="form-group">
+      <label>Execution Date <span class="req">*</span></label>
+      <input type="date" id="execDate">
     </div>
     <div class="form-group">
-      <label>Date of Execution <span class="req">*</span></label>
-      <input type="date" id="f-exec-date"/>
-    </div>
-    <div class="form-group">
-      <label>Time of Arrival (Site In) <span class="req">*</span></label>
-      <div class="time-btn-group">
-        <input type="time" id="f-site-in"/>
-        <button class="now-btn" onclick="setNow('f-site-in')">Now</button>
+      <label>Site In (Arrival) <span class="req">*</span></label>
+      <div class="time-group">
+        <input type="time" id="siteIn">
+        <button type="button" class="now-btn" onclick="setNowField('siteIn')">Now</button>
       </div>
     </div>
     <div class="form-group">
-      <label>Work Started Time <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
-      <div class="time-btn-group">
-        <input type="time" id="f-work-start"/>
-        <button class="now-btn" onclick="setNow('f-work-start')">Now</button>
+      <label>Work Started Time (optional)</label>
+      <div class="time-group">
+        <input type="time" id="workStart">
+        <button type="button" class="now-btn" onclick="setNowField('workStart')">Now</button>
       </div>
     </div>
     <div class="form-group">
-      <label>Time of Departure (Site Out) <span class="req">*</span></label>
-      <div class="time-btn-group">
-        <input type="time" id="f-site-out"/>
-        <button class="now-btn" onclick="setNow('f-site-out')">Now</button>
+      <label>Site Out (Departure) <span class="req">*</span></label>
+      <div class="time-group">
+        <input type="time" id="siteOut">
+        <button type="button" class="now-btn" onclick="setNowField('siteOut')">Now</button>
       </div>
     </div>
     <div class="form-group">
       <label>Work Status <span class="req">*</span></label>
-      <select id="f-status">
-        <option value="">Select status</option>
+      <select id="workStatus">
+        <option value="">Select</option>
         <option value="completed">✅ Completed</option>
         <option value="in_progress">🔄 In Progress</option>
         <option value="rescheduled">📅 Rescheduled</option>
@@ -190,261 +393,361 @@ textarea { resize:vertical;min-height:80px; }
     </div>
   </div>
 
-  <!-- Section 3: Financials -->
-  <div class="section-card">
-    <div class="section-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      Financials Collected
-    </div>
+  <!-- Financials -->
+  <div class="card">
+    <div class="card-title">💰 Financials Collected</div>
     <div class="grid-2">
-      <div class="form-group">
-        <label>Final Amount (₹) <span class="req">*</span></label>
-        <input type="number" id="f-final" placeholder="0" inputmode="numeric"/>
-      </div>
-      <div class="form-group">
-        <label>Advance Paid (₹)</label>
-        <input type="number" id="f-advance" placeholder="0" inputmode="numeric"/>
-      </div>
+      <div class="form-group"><label>Final Amount (₹) <span class="req">*</span></label><input type="number" id="finalAmount" placeholder="0"></div>
+      <div class="form-group"><label>Advance Paid (₹)</label><input type="number" id="advancePaid" placeholder="0"></div>
     </div>
-    <div class="form-group">
-      <label>Material Cost (₹) <span class="req">*</span></label>
-      <input type="number" id="f-material" placeholder="0" inputmode="numeric"/>
-    </div>
-    <div class="form-group">
-      <label>Payment Mode <span class="req">*</span></label>
-      <select id="f-payment-mode">
-        <option value="">Select mode</option>
-        <option value="cash">💵 Cash</option>
-        <option value="upi">📱 UPI</option>
-        <option value="card">💳 Card</option>
-        <option value="online_transfer">🏦 Online Transfer</option>
-        <option value="other">Other</option>
-      </select>
+    <div class="form-group"><label>Material Cost (₹) <span class="req">*</span></label><input type="number" id="materialCost" placeholder="0"></div>
+    <div class="form-group"><label>Payment Mode <span class="req">*</span></label>
+      <select id="paymentMode"><option value="">Select</option><option value="cash">💵 Cash</option><option value="upi">📱 UPI</option><option value="card">💳 Card</option><option value="online_transfer">🏦 Bank Transfer</option><option value="other">Other</option></select>
     </div>
   </div>
 
-  <!-- Section 4: Extras -->
-  <div class="section-card">
-    <div class="section-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Job Feedback
-    </div>
-    <div class="form-group">
-      <label>Distance Travelled (km) <span class="req">*</span></label>
-      <input type="number" id="f-distance" placeholder="0" inputmode="decimal"/>
-    </div>
-    <div class="form-group">
-      <label>Technician Notes <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
-      <textarea id="f-notes" placeholder="Any notes about the job…"></textarea>
-    </div>
-    <div class="form-group">
-      <label>Issues Logged <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
-      <textarea id="f-issues" placeholder="Any major failures or issues…"></textarea>
-    </div>
-    <!-- Supervisor — shown only for Housekeeping -->
-    <div class="form-group" id="supervisor-field" style="display:none">
-      <label>Supervisor <span class="req">*</span></label>
-      <input type="text" id="f-supervisor" placeholder="Supervisor name"/>
-    </div>
-    <div class="form-group">
-      <label>Technician Name(s) <span style="font-size:11px;color:var(--slate-400)">(optional — comma separated)</span></label>
-      <input type="text" id="f-technicians" placeholder="e.g. Raju Kumar, Suresh P"/>
-    </div>
+  <!-- Extras & feedback -->
+  <div class="card">
+    <div class="card-title">📋 Job Feedback</div>
+    <div class="form-group"><label>Distance Travelled (km) <span class="req">*</span></label><input type="number" id="distanceKm" placeholder="0" step="any"></div>
+    <div class="form-group"><label>Technician Notes</label><textarea id="techNotes" rows="2" placeholder="Any additional notes..."></textarea></div>
+    <div class="form-group"><label>Issues Logged</label><textarea id="issuesLog" rows="2" placeholder="Major failures or issues"></textarea></div>
+    <div class="form-group" id="supervisorGroup" style="display:none"><label>Supervisor <span class="req">*</span></label><input type="text" id="supervisorName" placeholder="Supervisor name"></div>
+    <div class="form-group"><label>Technician Names (comma separated)</label><input type="text" id="techNames" placeholder="Raju, Suresh"></div>
   </div>
 
-  <button class="submit-btn" id="submit-btn" onclick="submitReport()">Submit Work Report</button>
-  <button class="draft-btn" id="draft-btn" onclick="saveDraft()">Save Draft</button>
-  <p style="text-align:center;font-size:11px;color:var(--slate-400);margin-top:12px">Report will be locked after submission.</p>
+  <button class="submit-btn" id="mainSubmitBtn">✓ Submit & Download PDF</button>
+  <button class="draft-btn" id="draftSaveBtn">💾 Save Draft</button>
+  <p style="text-align:center; font-size:11px; color:#64748b; margin-top:12px">Submission locks report & auto‑generates PDF summary</p>
 </div>
 
-<!-- Success -->
-<div class="submitted-view" id="success-view">
-  <div class="success-circle">
+<!-- Success + PDF trigger -->
+<div id="successView" class="success-view">
+  <div class="success-icon">
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
   </div>
   <div class="state-title">Report Submitted!</div>
-  <div class="state-desc">Your work report has been saved successfully. The scheduling team will review it.</div>
-  <div style="margin-top:24px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px 20px;text-align:left;max-width:320px">
-    <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px">SUBMITTED SUMMARY</div>
-    <div id="success-summary" style="font-size:13px;color:var(--slate-600);line-height:1.8"></div>
-  </div>
+  <div class="state-desc">Work report saved successfully. PDF is being generated...</div>
+  <div class="summary-card" id="pdfSummaryPreview"></div>
+  <p style="margin-top: 24px; font-size: 12px; color: #2c6e9e;">⬇️ PDF download will start automatically</p>
 </div>
 
 <script>
 const { createClient } = supabase;
+let SUPABASE_URL, SUPABASE_ANON_KEY;
+try {
+  if (typeof config !== 'undefined' && config.SUPABASE_URL) {
+    SUPABASE_URL = config.SUPABASE_URL;
+    SUPABASE_ANON_KEY = config.SUPABASE_ANON_KEY;
+  } else {
+    console.warn("config.js missing, using fallback environment (will fail if not present)");
+    SUPABASE_URL = window.SUPABASE_URL || '';
+    SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
+  }
+} catch(e) { console.error(e); }
+
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let bookingData = null;
+let bookingMeta = null;
 let bookingId = null;
-let isDraft = false;
+let existingReportId = null;
+let currentDraftData = null;
 
-function formatTime(t) {
+// helpers
+function formatTimeForDisplay(t) {
   if (!t) return '—';
   const [h,m] = t.split(':');
-  const hr = parseInt(h);
-  return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`;
+  const hour = parseInt(h);
+  return `${hour%12||12}:${m} ${hour>=12?'PM':'AM'}`;
 }
-function formatDate(d) {
+function formatDateReadable(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  return new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
 }
 
-(async () => {
+async function init() {
   const params = new URLSearchParams(window.location.search);
-  bookingId = params.get('booking_id') || parseInt(window.location.pathname.split('/').pop());
-  if (!bookingId) { showState('error'); return; }
-  document.getElementById('header-booking-id').textContent = `Booking #${bookingId}`;
+  let idParam = params.get('booking_id');
+  if (!idParam && window.location.pathname.split('/').pop()) idParam = window.location.pathname.split('/').pop();
+  if (!idParam) { showState('error'); return; }
+  bookingId = parseInt(idParam);
+  document.getElementById('headerRef').innerText = `Booking #${bookingId}`;
 
-  // Check if already submitted
-  const { data: existing } = await db.from('work_reports').select('id,work_status,submitted_at').eq('booking_id', bookingId).maybeSingle();
-  if (existing && existing.submitted_at) { showState('submitted'); return; }
-
-  // Fetch booking via RPC
-  const { data: bk, error } = await db.rpc('get_booking_for_report', { p_booking_id: parseInt(bookingId) });
-  if (error || !bk) { showState('error'); return; }
-  bookingData = bk;
-
-  // Populate job card
-  document.getElementById('jc-customer').textContent = bk.customer_name || '—';
-  document.getElementById('jc-meta').textContent = `${bk.customer_place||''} · ${bk.customer_phone||''}`;
-  document.getElementById('jc-segment').textContent = bk.segment_name || '—';
-  document.getElementById('jc-date').textContent = formatDate(bk.slot_date);
-  document.getElementById('jc-time').textContent = formatTime(bk.slot_time);
-  document.getElementById('jc-work').textContent = bk.service_details || '—';
-  document.getElementById('jc-amount').textContent = `₹${bk.total_amount||0}`;
-
-  // Show supervisor for housekeeping
-  if ((bk.segment_name||'').toLowerCase().includes('housekeeping')) {
-    document.getElementById('supervisor-field').style.display = 'block';
+  // check if already submitted (submitted_at not null)
+  const { data: existingFull, error: checkErr } = await db.from('work_reports').select('id, submitted_at, work_status, site_in, site_out, final_amount, distance, payment_mode, notes').eq('booking_id', bookingId).maybeSingle();
+  if (existingFull && existingFull.submitted_at) {
+    showState('submitted');
+    return;
   }
+  if (existingFull && !existingFull.submitted_at) existingReportId = existingFull.id;
 
-  // Pre-fill
-  document.getElementById('f-exec-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('f-advance').value = bk.advance_amount || 0;
-
-  // Load draft if exists
-  if (existing) loadDraftValues(existing);
-
+  // fetch booking via RPC
+  const { data: booking, error: rpcErr } = await db.rpc('get_booking_for_report', { p_booking_id: bookingId });
+  if (rpcErr || !booking) {
+    console.error(rpcErr);
+    showState('error');
+    return;
+  }
+  bookingMeta = booking;
+  populateJobCard(booking);
+  
+  // prefill advance & date
+  document.getElementById('execDate').value = new Date().toISOString().split('T')[0];
+  if (booking.advance_amount) document.getElementById('advancePaid').value = booking.advance_amount;
+  
+  // housekeeping supervisor logic
+  if (booking.segment_name && booking.segment_name.toLowerCase().includes('housekeeping')) {
+    document.getElementById('supervisorGroup').style.display = 'block';
+  }
+  
+  // if draft exists load values
+  if (existingFull) loadDraftIntoForm(existingFull);
+  
   showState('form');
-})();
-
-function showState(state) {
-  document.getElementById('state-loading').style.display = 'none';
-  document.getElementById('state-error').style.display = state==='error'?'flex':'none';
-  document.getElementById('state-submitted').style.display = state==='submitted'?'flex':'none';
-  document.getElementById('form-wrap').style.display = state==='form'?'block':'none';
-  document.getElementById('success-view').classList.toggle('show', state==='success');
 }
 
-function setNow(fieldId) {
-  const now = new Date();
-  document.getElementById(fieldId).value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+function populateJobCard(bk) {
+  document.getElementById('custName').innerText = bk.customer_name || '—';
+  document.getElementById('custMeta').innerText = `${bk.customer_place || ''} · ${bk.customer_phone || ''}`;
+  document.getElementById('segmentPill').innerText = bk.segment_name || '—';
+  document.getElementById('datePill').innerText = formatDateReadable(bk.slot_date);
+  document.getElementById('timePill').innerText = formatTimeForDisplay(bk.slot_time);
+  document.getElementById('workType').innerText = bk.service_details || '—';
+  document.getElementById('bookingAmount').innerText = `₹${bk.total_amount || 0}`;
 }
 
-async function submitReport() {
-  const status = document.getElementById('f-status').value;
-  const siteIn = document.getElementById('f-site-in').value;
-  const siteOut = document.getElementById('f-site-out').value;
-  const finalAmt = document.getElementById('f-final').value;
-  const material = document.getElementById('f-material').value;
-  const payMode = document.getElementById('f-payment-mode').value;
-  const distance = document.getElementById('f-distance').value;
-  const execDate = document.getElementById('f-exec-date').value;
-
-  if (!status||!siteIn||!siteOut||!finalAmt||!material||!payMode||!distance||!execDate) {
-    showToast('Please fill all required fields.','error'); return;
-  }
-
-  const btn = document.getElementById('submit-btn');
-  btn.disabled=true; btn.textContent='Submitting…';
-
-  const payload = buildPayload(false);
-  const { data: existing } = await db.from('work_reports').select('id').eq('booking_id', bookingId).maybeSingle();
-
-  let error;
-  if (existing) {
-    ({ error } = await db.from('work_reports').update({...payload, submitted_at: new Date().toISOString()}).eq('id', existing.id));
-  } else {
-    ({ error } = await db.from('work_reports').insert({...payload, booking_id: parseInt(bookingId), submitted_at: new Date().toISOString()}));
-  }
-
-  if (error) { showToast(error.message,'error'); btn.disabled=false; btn.textContent='Submit Work Report'; return; }
-
-  // Show success
-  document.getElementById('success-summary').innerHTML = `
-    <div>Status: <strong>${status}</strong></div>
-    <div>Final Amount: <strong>₹${finalAmt}</strong></div>
-    <div>Payment: <strong>${payMode.replace('_',' ')}</strong></div>
-    <div>Distance: <strong>${distance} km</strong></div>
-    <div>Site In: <strong>${formatTime(siteIn)}</strong> · Out: <strong>${formatTime(siteOut)}</strong></div>`;
-  showState('success');
+function loadDraftIntoForm(draft) {
+  if (draft.work_status) document.getElementById('workStatus').value = draft.work_status;
+  if (draft.site_in) document.getElementById('siteIn').value = draft.site_in;
+  if (draft.work_started_time) document.getElementById('workStart').value = draft.work_started_time;
+  if (draft.site_out) document.getElementById('siteOut').value = draft.site_out;
+  if (draft.final_amount) document.getElementById('finalAmount').value = draft.final_amount;
+  if (draft.advance) document.getElementById('advancePaid').value = draft.advance;
+  if (draft.material_cost) document.getElementById('materialCost').value = draft.material_cost;
+  if (draft.payment_mode) document.getElementById('paymentMode').value = draft.payment_mode;
+  if (draft.distance) document.getElementById('distanceKm').value = draft.distance;
+  if (draft.notes) document.getElementById('techNotes').value = draft.notes;
+  if (draft.issues_logged) document.getElementById('issuesLog').value = draft.issues_logged;
+  if (draft.supervisor) document.getElementById('supervisorName').value = draft.supervisor;
+  if (draft.technician_names) document.getElementById('techNames').value = draft.technician_names;
 }
 
-async function saveDraft() {
-  const btn = document.getElementById('draft-btn');
-  btn.textContent = 'Saving…'; btn.disabled=true;
-
-  const payload = buildPayload(true);
-  const { data: existing } = await db.from('work_reports').select('id').eq('booking_id', bookingId).maybeSingle();
-  let error;
-  if (existing) {
-    ({ error } = await db.from('work_reports').update(payload).eq('id', existing.id));
-  } else {
-    ({ error } = await db.from('work_reports').insert({...payload, booking_id: parseInt(bookingId)}));
-  }
-  if (error) { showToast(error.message,'error'); }
-  else { showToast('Draft saved!'); }
-  btn.textContent='Save Draft'; btn.disabled=false;
-}
-
-function buildPayload(isDraft) {
+function buildPayloadObject() {
   return {
-    work_status: document.getElementById('f-status').value || 'pending',
-    site_in: document.getElementById('f-site-in').value || null,
-    work_started_time: document.getElementById('f-work-start').value || null,
-    site_out: document.getElementById('f-site-out').value || null,
-    executed_date: document.getElementById('f-exec-date').value || null,
-    final_amount: parseFloat(document.getElementById('f-final').value) || null,
-    advance: parseFloat(document.getElementById('f-advance').value) || 0,
-    material_cost: parseFloat(document.getElementById('f-material').value) || 0,
-    payment_mode: document.getElementById('f-payment-mode').value || null,
-    distance: parseFloat(document.getElementById('f-distance').value) || null,
-    notes: document.getElementById('f-notes').value || null,
-    issues_logged: document.getElementById('f-issues').value || null,
-    supervisor: document.getElementById('f-supervisor').value || null,
-    technician_names: document.getElementById('f-technicians').value || null,
-    estimated_amount: bookingData?.total_amount || null,
+    work_status: document.getElementById('workStatus').value || 'pending',
+    site_in: document.getElementById('siteIn').value || null,
+    work_started_time: document.getElementById('workStart').value || null,
+    site_out: document.getElementById('siteOut').value || null,
+    executed_date: document.getElementById('execDate').value || null,
+    final_amount: parseFloat(document.getElementById('finalAmount').value) || 0,
+    advance: parseFloat(document.getElementById('advancePaid').value) || 0,
+    material_cost: parseFloat(document.getElementById('materialCost').value) || 0,
+    payment_mode: document.getElementById('paymentMode').value || null,
+    distance: parseFloat(document.getElementById('distanceKm').value) || 0,
+    notes: document.getElementById('techNotes').value || null,
+    issues_logged: document.getElementById('issuesLog').value || null,
+    supervisor: document.getElementById('supervisorName').value || null,
+    technician_names: document.getElementById('techNames').value || null,
+    estimated_amount: bookingMeta?.total_amount || null,
     updated_at: new Date().toISOString()
   };
 }
 
-function loadDraftValues(d) {
-  if (d.work_status) document.getElementById('f-status').value = d.work_status;
-  if (d.site_in) document.getElementById('f-site-in').value = d.site_in;
-  if (d.work_started_time) document.getElementById('f-work-start').value = d.work_started_time;
-  if (d.site_out) document.getElementById('f-site-out').value = d.site_out;
-  if (d.final_amount) document.getElementById('f-final').value = d.final_amount;
-  if (d.advance) document.getElementById('f-advance').value = d.advance;
-  if (d.material_cost) document.getElementById('f-material').value = d.material_cost;
-  if (d.payment_mode) document.getElementById('f-payment-mode').value = d.payment_mode;
-  if (d.distance) document.getElementById('f-distance').value = d.distance;
-  if (d.notes) document.getElementById('f-notes').value = d.notes;
-  if (d.issues_logged) document.getElementById('f-issues').value = d.issues_logged;
-  if (d.supervisor) document.getElementById('f-supervisor').value = d.supervisor;
-  if (d.technician_names) document.getElementById('f-technicians').value = d.technician_names;
+async function saveDraft() {
+  const btn = document.getElementById('draftSaveBtn');
+  const original = btn.innerText;
+  btn.innerText = 'Saving...';
+  btn.disabled = true;
+  const payload = buildPayloadObject();
+  let error;
+  if (existingReportId) {
+    ({ error } = await db.from('work_reports').update(payload).eq('id', existingReportId));
+  } else {
+    const { error: insErr, data } = await db.from('work_reports').insert({ ...payload, booking_id: bookingId });
+    error = insErr;
+    if (data && data[0]) existingReportId = data[0].id;
+  }
+  if (error) showToast(error.message, true);
+  else showToast('Draft saved successfully', false);
+  btn.innerText = original;
+  btn.disabled = false;
 }
 
-// Simple inline toast for this page (no app.js loaded)
-function showToast(msg, type='success') {
-  let c = document.getElementById('tc');
-  if (!c) { c=document.createElement('div');c.id='tc';c.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center';document.body.appendChild(c); }
-  const t = document.createElement('div');
-  t.style.cssText=`padding:12px 24px;border-radius:24px;color:#fff;font-size:14px;font-weight:600;
-    box-shadow:0 4px 20px rgba(0,0,0,.15);white-space:nowrap;
-    background:${type==='error'?'#dc2626':'#1d4ed8'}`;
-  t.textContent=msg; c.appendChild(t);
-  setTimeout(()=>t.remove(),3000);
+function validateRequired() {
+  const status = document.getElementById('workStatus').value;
+  const siteIn = document.getElementById('siteIn').value;
+  const siteOut = document.getElementById('siteOut').value;
+  const finalAmt = document.getElementById('finalAmount').value;
+  const material = document.getElementById('materialCost').value;
+  const payMode = document.getElementById('paymentMode').value;
+  const distance = document.getElementById('distanceKm').value;
+  const execDate = document.getElementById('execDate').value;
+  if (!status || !siteIn || !siteOut || finalAmt === '' || material === '' || !payMode || distance === '' || !execDate) {
+    showToast('Please fill all required fields (*)', true);
+    return false;
+  }
+  return true;
 }
+
+async function submitReport() {
+  if (!validateRequired()) return;
+  const submitBtn = document.getElementById('mainSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerText = 'Submitting...';
+  const payload = buildPayloadObject();
+  const finalPayload = { ...payload, submitted_at: new Date().toISOString() };
+  let error;
+  if (existingReportId) {
+    ({ error } = await db.from('work_reports').update(finalPayload).eq('id', existingReportId));
+  } else {
+    const { error: insErr } = await db.from('work_reports').insert({ ...finalPayload, booking_id: bookingId });
+    error = insErr;
+  }
+  if (error) {
+    showToast(error.message || 'Submit failed', true);
+    submitBtn.disabled = false;
+    submitBtn.innerText = '✓ Submit & Download PDF';
+    return;
+  }
+  // gather all data for PDF
+  const formData = {
+    booking: bookingMeta,
+    report: {
+      ...finalPayload,
+      executed_date: document.getElementById('execDate').value,
+      site_in: document.getElementById('siteIn').value,
+      site_out: document.getElementById('siteOut').value,
+      work_started: document.getElementById('workStart').value,
+      status: document.getElementById('workStatus').value,
+      final_amount: finalPayload.final_amount,
+      advance: finalPayload.advance,
+      material_cost: finalPayload.material_cost,
+      payment_mode: document.getElementById('paymentMode').value,
+      distance: finalPayload.distance,
+      notes: finalPayload.notes,
+      issues: finalPayload.issues_logged,
+      supervisor: finalPayload.supervisor,
+      technicians: finalPayload.technician_names
+    }
+  };
+  // show success preview
+  const summaryHtml = `
+    <div style="display:flex; justify-content:space-between;"><span>Status:</span><strong>${formData.report.status}</strong></div>
+    <div style="display:flex; justify-content:space-between; margin-top:6px;"><span>Final amount:</span><strong>₹${formData.report.final_amount}</strong></div>
+    <div style="display:flex; justify-content:space-between;"><span>Payment:</span><strong>${formData.report.payment_mode}</strong></div>
+    <div style="display:flex; justify-content:space-between;"><span>Distance:</span><strong>${formData.report.distance} km</strong></div>
+    <div style="display:flex; justify-content:space-between;"><span>Site In/Out:</span><strong>${formatTimeForDisplay(formData.report.site_in)} → ${formatTimeForDisplay(formData.report.site_out)}</strong></div>
+  `;
+  document.getElementById('pdfSummaryPreview').innerHTML = summaryHtml;
+  showState('success');
+  
+  // Generate PDF automatically
+  generateWorkReportPDF(formData);
+  submitBtn.disabled = false; // but UI is in success mode anyway
+}
+
+async function generateWorkReportPDF(data) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const booking = data.booking;
+  const rep = data.report;
+  
+  doc.setFont('helvetica');
+  doc.setFontSize(20);
+  doc.setTextColor(20, 50, 90);
+  doc.text('Handy sQuad · Work Report', 20, 20);
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Report ID: #${bookingId}  |  Generated: ${new Date().toLocaleString()}`, 20, 30);
+  
+  doc.setDrawColor(200);
+  doc.line(20, 35, 190, 35);
+  
+  // Customer & Job
+  doc.setFontSize(12);
+  doc.setTextColor(30, 70, 110);
+  doc.text('JOB DETAILS', 20, 45);
+  doc.setFontSize(10);
+  doc.setTextColor(0);
+  doc.text(`Customer: ${booking.customer_name || '—'}`, 20, 54);
+  doc.text(`Contact: ${booking.customer_phone || '—'}  |  Place: ${booking.customer_place || '—'}`, 20, 62);
+  doc.text(`Service: ${booking.service_details || '—'}  |  Segment: ${booking.segment_name || '—'}`, 20, 70);
+  doc.text(`Original Slot: ${formatDateReadable(booking.slot_date)} at ${formatTimeForDisplay(booking.slot_time)}`, 20, 78);
+  doc.text(`Estimated Amount: ₹${booking.total_amount || 0}`, 20, 86);
+  
+  doc.line(20, 92, 190, 92);
+  doc.setFontSize(12);
+  doc.setTextColor(30, 70, 110);
+  doc.text('EXECUTION REPORT', 20, 102);
+  doc.setFontSize(10);
+  doc.setTextColor(0);
+  doc.text(`Execution Date: ${rep.executed_date || '—'}`, 20, 112);
+  doc.text(`Site In (Arrival): ${rep.site_in ? formatTimeForDisplay(rep.site_in) : '—'}    |    Site Out: ${rep.site_out ? formatTimeForDisplay(rep.site_out) : '—'}`, 20, 120);
+  doc.text(`Work Started: ${rep.work_started ? formatTimeForDisplay(rep.work_started) : '—'}`, 20, 128);
+  doc.text(`Work Status: ${rep.status || '—'}`, 20, 136);
+  doc.text(`Distance Travelled: ${rep.distance} km`, 20, 144);
+  
+  doc.line(20, 150, 190, 150);
+  doc.setFontSize(12);
+  doc.setTextColor(30, 70, 110);
+  doc.text('FINANCIAL SUMMARY', 20, 160);
+  doc.setFontSize(10);
+  doc.text(`Final Amount Collected: ₹${rep.final_amount}`, 20, 170);
+  doc.text(`Advance Paid: ₹${rep.advance}     |     Material Cost: ₹${rep.material_cost}`, 20, 178);
+  doc.text(`Payment Mode: ${rep.payment_mode || '—'}`, 20, 186);
+  
+  if (rep.supervisor || rep.technicians) {
+    doc.text(`Supervisor: ${rep.supervisor || '—'}`, 20, 196);
+    doc.text(`Technicians: ${rep.technicians || '—'}`, 20, 204);
+  }
+  if (rep.notes) {
+    doc.text('Notes:', 20, 214);
+    const splitNotes = doc.splitTextToSize(rep.notes, 170);
+    doc.text(splitNotes, 20, 222);
+  }
+  if (rep.issues) {
+    doc.text('Issues Logged:', 20, 240);
+    const splitIssues = doc.splitTextToSize(rep.issues, 170);
+    doc.text(splitIssues, 20, 248);
+  }
+  
+  doc.setFontSize(8);
+  doc.setTextColor(120);
+  doc.text('This is an official work report summary – Handy sQuad', 20, 280);
+  doc.save(`WorkReport_Booking_${bookingId}.pdf`);
+}
+
+function showState(state) {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('errorState').style.display = 'none';
+  document.getElementById('submittedState').style.display = 'none';
+  document.getElementById('formContainer').style.display = 'none';
+  document.getElementById('successView').classList.remove('show');
+  if (state === 'error') document.getElementById('errorState').style.display = 'flex';
+  else if (state === 'submitted') document.getElementById('submittedState').style.display = 'flex';
+  else if (state === 'form') document.getElementById('formContainer').style.display = 'block';
+  else if (state === 'success') document.getElementById('successView').classList.add('show');
+}
+
+function setNowField(fieldId) {
+  const now = new Date();
+  const val = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById(fieldId).value = val;
+}
+
+function showToast(msg, isError = false) {
+  const toastDiv = document.createElement('div');
+  toastDiv.className = 'toast-msg';
+  toastDiv.innerText = msg;
+  toastDiv.style.background = isError ? '#b91c1c' : '#0f2b4d';
+  document.body.appendChild(toastDiv);
+  setTimeout(() => toastDiv.remove(), 3000);
+}
+
+window.setNowField = setNowField;
+window.saveDraft = saveDraft;
+window.submitReport = submitReport;
+
+init();
 </script>
 </body>
 </html>
