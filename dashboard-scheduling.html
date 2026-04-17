@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Handy sQuad — Scheduling</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing:border-box;margin:0;padding:0; }
+:root {
+  --blue-900:#1e3a8a; --blue-700:#1d4ed8; --blue-500:#3b82f6;
+  --blue-100:#dbeafe; --blue-50:#eff6ff;
+  --white:#fff; --slate-800:#1e293b; --slate-600:#475569; --slate-400:#94a3b8;
+  --slate-200:#e2e8f0; --slate-100:#f1f5f9; --slate-50:#f8fafc;
+}
+body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color:var(--slate-800);min-height:100vh; }
+.app-shell { display:flex;min-height:100vh; }
+.sidebar {
+  width:240px;background:linear-gradient(180deg,var(--blue-900),var(--blue-700));
+  display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;bottom:0;z-index:100;
+}
+.sidebar-logo { padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:16px; }
+.sidebar-logo .name { font-size:20px;font-weight:800;color:#fff;letter-spacing:-.4px; }
+.sidebar-logo .name span { color:#93c5fd; }
+.sidebar-logo .role { font-size:11px;color:#93c5fd;font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-top:2px; }
+.nav-item { display:flex;align-items:center;gap:12px;padding:11px 24px;color:rgba(255,255,255,.7);
+  font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border-left:3px solid transparent;text-decoration:none; }
+.nav-item:hover,.nav-item.active { color:#fff;background:rgba(255,255,255,.1);border-left-color:#93c5fd; }
+.sidebar-bottom { margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,.1); }
+.main { margin-left:240px;flex:1; }
+.topbar { background:var(--white);border-bottom:1px solid var(--slate-200);padding:16px 28px;
+  display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50; }
+.page-title { font-size:20px;font-weight:800;color:var(--slate-800); }
+.page-subtitle { font-size:13px;color:var(--slate-400);font-weight:500; }
+.content { padding:28px; }
+
+/* Table */
+.data-table-wrap { background:#fff;border-radius:16px;border:1px solid var(--slate-200);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04); }
+.data-table { width:100%;border-collapse:collapse; }
+.data-table thead tr { background:var(--blue-50); }
+.data-table th { padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px; }
+.data-table td { padding:12px 16px;font-size:13px;border-top:1px solid var(--slate-100);vertical-align:middle; }
+.data-table tr:hover td { background:var(--blue-50); }
+.row-btn { background:none;border:none;cursor:pointer;padding:5px 10px;border-radius:7px;font-size:12px;font-weight:600;transition:background .2s; }
+.row-btn.view { color:var(--blue-700);background:var(--blue-50); }
+.row-btn.view:hover { background:var(--blue-100); }
+
+/* Filter bar */
+.filter-bar { display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap; }
+.filter-bar input,.filter-bar select { padding:9px 14px;border:2px solid var(--slate-200);border-radius:10px;font-size:13px;font-family:inherit;color:var(--slate-800);background:var(--white); }
+.filter-bar input:focus,.filter-bar select:focus { outline:none;border-color:var(--blue-500); }
+
+/* Side panel */
+.side-panel {
+  position:fixed;top:0;right:-480px;width:480px;height:100vh;
+  background:#fff;box-shadow:-4px 0 32px rgba(0,0,0,.12);
+  transition:right .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:200;display:flex;flex-direction:column;
+}
+.side-panel.open { right:0; }
+.side-panel-header { padding:20px 24px;border-bottom:1px solid var(--slate-200);display:flex;justify-content:space-between;align-items:center; }
+.side-panel-title { font-size:17px;font-weight:800;color:var(--slate-800); }
+.side-panel-body { flex:1;overflow-y:auto;padding:24px; }
+
+.info-block { background:var(--slate-50);border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid var(--slate-200); }
+.info-block-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--blue-700);margin-bottom:10px; }
+.info-row { display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--slate-100); }
+.info-row:last-child { border-bottom:none; }
+.info-label { font-size:12px;color:var(--slate-400);font-weight:600; }
+.info-val { font-size:13px;font-weight:600;color:var(--slate-800);text-align:right;max-width:65%; }
+
+.copy-block {
+  background:var(--slate-800);border-radius:12px;padding:16px;
+  font-family:'Courier New',monospace;font-size:12px;color:#e2e8f0;
+  line-height:1.7;white-space:pre;overflow-x:auto;margin-bottom:16px;
+}
+
+/* Spinner */
+.spinner { display:inline-block;width:16px;height:16px;border:2px solid var(--slate-200);border-top-color:var(--blue-500);border-radius:50%;animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-overlay { display:flex;align-items:center;justify-content:center;padding:60px;color:var(--slate-400);font-size:14px;gap:10px; }
+
+/* Modal form row */
+.form-row { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+.section-divider { font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--blue-700);padding:8px 0 12px;border-bottom:2px solid var(--blue-100);margin-bottom:16px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="name">Handy <span>sQuad</span></div>
+      <div class="role">Scheduling</div>
+    </div>
+    <a class="nav-item active" href="#" onclick="showView('slots')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Slot Management
+    </a>
+    <a class="nav-item" href="#" onclick="showView('bookings')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Place Work View
+    </a>
+    <a class="nav-item" href="#" onclick="showView('reports')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Work Reports
+    </a>
+    <div class="sidebar-bottom"><div id="user-badge-sidebar"></div></div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">Slot Management</div>
+        <div class="page-subtitle" id="page-subtitle">Create and manage slot capacity</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <button class="btn btn-primary btn-sm" id="topbar-action" onclick="openCreateSlotModal()">+ Create Slot</button>
+        <div id="user-badge-top"></div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- SLOTS VIEW -->
+      <div id="view-slots">
+        <div class="filter-bar">
+          <input type="date" id="slot-date" onchange="loadSlots()"/>
+          <select id="slot-seg" onchange="loadSlots()"><option value="">All Segments</option></select>
+        </div>
+        <div id="slots-table"></div>
+      </div>
+
+      <!-- BOOKINGS VIEW -->
+      <div id="view-bookings" style="display:none">
+        <div class="filter-bar">
+          <input type="date" id="bk-date" onchange="loadBookings()"/>
+          <select id="bk-seg" onchange="loadBookings()"><option value="">All Segments</option></select>
+          <select id="bk-status" onchange="loadBookings()">
+            <option value="">All Status</option>
+            <option>booked</option><option>completed</option><option>cancelled</option><option>rescheduled</option>
+          </select>
+        </div>
+        <div id="bookings-table"></div>
+      </div>
+
+      <!-- WORK REPORTS VIEW -->
+      <div id="view-reports" style="display:none">
+        <div class="filter-bar">
+          <input type="date" id="rep-date" onchange="loadReports()"/>
+          <select id="rep-status" onchange="loadReports()">
+            <option value="">All Status</option>
+            <option>pending</option><option>in_progress</option><option>completed</option>
+          </select>
+        </div>
+        <div id="reports-table"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Side Panel -->
+<div class="side-panel" id="side-panel">
+  <div class="side-panel-header">
+    <div class="side-panel-title">Booking Details</div>
+    <button class="modal-close" onclick="closeSidePanel()" style="font-size:22px;background:none;border:none;cursor:pointer;color:#94a3b8;">&times;</button>
+  </div>
+  <div class="side-panel-body" id="side-panel-body"></div>
+</div>
+
+<!-- Create Slot Modal -->
+<div class="modal-overlay" id="modal-slot">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Create Slot</div>
+      <button class="modal-close" onclick="closeModal('modal-slot')">&times;</button>
+    </div>
+    <div class="form-group"><label class="form-label">Segment *</label>
+      <select class="form-select" id="cs-segment"><option value="">Select segment</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date *</label><input class="form-input" type="date" id="cs-date"/></div>
+      <div class="form-group"><label class="form-label">Time *</label><input class="form-input" type="time" id="cs-time"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Capacity *</label><input class="form-input" type="number" id="cs-capacity" value="2" min="1"/></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-slot')">Cancel</button>
+      <button class="btn btn-primary" onclick="createSlot()">Create Slot</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reschedule Modal -->
+<div class="modal-overlay" id="modal-reschedule">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Reschedule Booking</div>
+      <button class="modal-close" onclick="closeModal('modal-reschedule')">&times;</button>
+    </div>
+    <p style="font-size:13px;color:var(--slate-500);margin-bottom:16px">Booking <strong id="rs-booking-id"></strong> will be moved to a new slot.</p>
+    <div class="form-group"><label class="form-label">New Slot *</label>
+      <select class="form-select" id="rs-new-slot"><option value="">Select new slot</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Reason</label><textarea class="form-textarea" id="rs-reason" placeholder="Why is this being rescheduled?"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-reschedule')">Cancel</button>
+      <button class="btn btn-primary" onclick="doReschedule()">Confirm Reschedule</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let allSegments = [];
+let rescheduleBookingId = null;
+let rescheduleOldSlotId = null;
+
+(async () => {
+  currentUser = await requireAuth(['scheduling','admin']);
+  if (!currentUser) return;
+  renderUserBadge(currentUser, 'user-badge-top');
+  renderUserBadge(currentUser, 'user-badge-sidebar');
+  await loadSegments();
+  document.getElementById('slot-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('bk-date').value = new Date().toISOString().split('T')[0];
+  await loadSlots();
+})();
+
+async function loadSegments() {
+  const { data } = await db.from('segments').select('*').order('name');
+  allSegments = data || [];
+  ['slot-seg','bk-seg','cs-segment'].forEach(id => {
+    const el = document.getElementById(id);
+    allSegments.forEach(s => {
+      const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; el.appendChild(o);
+    });
+  });
+}
+
+// ── SLOTS ─────────────────────────────────────────────────────
+async function loadSlots() {
+  const date = document.getElementById('slot-date').value;
+  const segId = document.getElementById('slot-seg').value;
+  const container = document.getElementById('slots-table');
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
+
+  let q = db.from('slots').select(`id,date,time,capacity,booked_count,segments(name)`).order('date').order('time');
+  if (date) q = q.eq('date', date);
+  if (segId) q = q.eq('segment_id', segId);
+  const { data } = await q;
+  if (!data?.length) { container.innerHTML = '<div class="loading-overlay">No slots found.</div>'; return; }
+
+  container.innerHTML = `<div class="data-table-wrap"><table class="data-table">
+    <thead><tr>${['Segment','Date','Time','Capacity','Booked','Available','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>
+    ${data.map(s => {
+      const avail = s.capacity - s.booked_count;
+      return `<tr>
+        <td><strong>${s.segments?.name||'—'}</strong></td>
+        <td>${formatDate(s.date)}</td>
+        <td>${formatTime(s.time)}</td>
+        <td>${s.capacity}</td>
+        <td>${s.booked_count}</td>
+        <td><span style="color:${avail>0?'#16a34a':'#dc2626'};font-weight:700">${avail}</span></td>
+        <td><button class="row-btn view" onclick="editSlot(${s.id},${s.capacity})">Edit Capacity</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+}
+
+function openCreateSlotModal() {
+  document.getElementById('cs-date').value = document.getElementById('slot-date').value || new Date().toISOString().split('T')[0];
+  openModal('modal-slot');
+}
+
+async function createSlot() {
+  const seg = document.getElementById('cs-segment').value;
+  const date = document.getElementById('cs-date').value;
+  const time = document.getElementById('cs-time').value;
+  const cap = parseInt(document.getElementById('cs-capacity').value);
+  if (!seg || !date || !time || !cap) { toast('All fields required.', 'error'); return; }
+  const { error } = await db.from('slots').insert({ segment_id: seg, date, time, capacity: cap });
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Slot created!'); closeModal('modal-slot'); loadSlots();
+}
+
+async function editSlot(id, curCap) {
+  const newCap = prompt(`Current capacity: ${curCap}\nEnter new capacity:`, curCap);
+  if (!newCap || isNaN(newCap)) return;
+  const { error } = await db.from('slots').update({ capacity: parseInt(newCap) }).eq('id', id);
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Capacity updated!'); loadSlots();
+}
+
+// ── BOOKINGS ──────────────────────────────────────────────────
+async function loadBookings() {
+  const date = document.getElementById('bk-date').value;
+  const segId = document.getElementById('bk-seg').value;
+  const status = document.getElementById('bk-status').value;
+  const container = document.getElementById('bookings-table');
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
+
+  let q = db.from('bookings')
+    .select(`id,status,service_details,total_amount,advance_amount,payment_status,created_at,
+      customers(name,phone,place,address,alt_phone,location_link),
+      slots(date,time,segments(name))`)
+    .order('created_at', { ascending: false });
+  if (status) q = q.eq('status', status);
+
+  const { data } = await q;
+  if (!data?.length) { container.innerHTML = '<div class="loading-overlay">No bookings found.</div>'; return; }
+
+  // Filter by date/segment in memory (join filtering)
+  const filtered = data.filter(b => {
+    const dateOk = !date || b.slots?.date === date;
+    const segOk = !segId || true; // segment filter via UI
+    return dateOk && segOk;
+  });
+
+  container.innerHTML = `<div class="data-table-wrap"><table class="data-table">
+    <thead><tr>${['#','Customer','Segment','Date/Time','Amount','Status','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>
+    ${filtered.map(b=>`<tr>
+      <td style="font-weight:700;color:var(--blue-700)">#${b.id}</td>
+      <td><div style="font-weight:600">${b.customers?.name||'—'}</div><div style="font-size:11px;color:var(--slate-400)">${b.customers?.phone||''}</div></td>
+      <td>${b.slots?.segments?.name||'—'}</td>
+      <td>${formatDate(b.slots?.date)} ${formatTime(b.slots?.time)}</td>
+      <td style="font-weight:600">${formatCurrency(b.total_amount)}</td>
+      <td><span class="badge badge-${b.status}">${b.status}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="row-btn view" onclick="openBookingPanel(${JSON.stringify(b).replace(/"/g,'&quot;')})">View</button>
+        <button class="row-btn" style="color:#d97706;background:#fef3c7" onclick="openReschedule(${b.id},${b.slots ? b.slots.id||0 : 0})">Reschedule</button>
+      </td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function openBookingPanel(b) {
+  const balance = (Number(b.total_amount||0) - Number(b.advance_amount||0)).toFixed(0);
+  const copyText = generateCopyBlock({
+    customer_name: b.customers?.name, customer_phone: b.customers?.phone,
+    customer_alt_phone: b.customers?.alt_phone, customer_place: b.customers?.place,
+    customer_address: b.customers?.address, location_link: b.customers?.location_link,
+    segment_name: b.slots?.segments?.name, slot_date: b.slots?.date, slot_time: b.slots?.time,
+    total_amount: b.total_amount, advance_amount: b.advance_amount,
+    service_details: b.service_details, attachment_link: b.attachment_link
+  });
+
+  document.getElementById('side-panel-body').innerHTML = `
+    <div class="info-block">
+      <div class="info-block-title">Booking #${b.id}</div>
+      ${[['Status', `<span class="badge badge-${b.status}">${b.status}</span>`],
+         ['Payment', `<span class="badge badge-${b.payment_status}">${b.payment_status}</span>`],
+         ['Segment', b.slots?.segments?.name||'—'],
+         ['Date', formatDate(b.slots?.date)],
+         ['Time', formatTime(b.slots?.time)],
+         ['Work Details', b.service_details||'—']
+        ].map(([l,v])=>`<div class="info-row"><span class="info-label">${l}</span><span class="info-val">${v}</span></div>`).join('')}
+    </div>
+    <div class="info-block">
+      <div class="info-block-title">Customer</div>
+      ${[['Name', b.customers?.name||'—'],['Phone', b.customers?.phone||'—'],
+         ['Alt Phone', b.customers?.alt_phone||'—'],['Place', b.customers?.place||'—'],
+         ['Address', b.customers?.address||'—']
+        ].map(([l,v])=>`<div class="info-row"><span class="info-label">${l}</span><span class="info-val">${v}</span></div>`).join('')}
+    </div>
+    <div class="info-block">
+      <div class="info-block-title">Financials</div>
+      ${[['Total', formatCurrency(b.total_amount)],['Advance', formatCurrency(b.advance_amount)],
+         ['Balance', formatCurrency(balance)]
+        ].map(([l,v])=>`<div class="info-row"><span class="info-label">${l}</span><span class="info-val" style="color:var(--blue-700)">${v}</span></div>`).join('')}
+    </div>
+    <div style="margin-bottom:8px;font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px">Copy-Paste Block</div>
+    <div class="copy-block" id="copy-block-text">${copyText}</div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button class="btn btn-primary btn-sm" onclick="copyToClipboard(document.getElementById('copy-block-text').textContent)">📋 Copy Block</button>
+      <button class="btn btn-secondary btn-sm" onclick="openReschedule(${b.id},${b.slot_id})">🔄 Reschedule</button>
+    </div>
+    <div>
+      <label class="form-label" style="font-size:12px">Update Status</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        ${['booked','completed','cancelled'].map(s=>`<button class="btn btn-sm btn-secondary" onclick="updateBookingStatus(${b.id},'${s}')">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('side-panel').classList.add('open');
+}
+
+async function updateBookingStatus(bookingId, status) {
+  const { error } = await db.from('bookings').update({ status }).eq('id', bookingId);
+  if (error) { toast(error.message,'error'); return; }
+  toast(`Status updated to ${status}`);
+  closeSidePanel();
+  loadBookings();
+}
+
+function closeSidePanel() { document.getElementById('side-panel').classList.remove('open'); }
+
+// ── RESCHEDULE ────────────────────────────────────────────────
+async function openReschedule(bookingId, oldSlotId) {
+  rescheduleBookingId = bookingId;
+  rescheduleOldSlotId = oldSlotId;
+  document.getElementById('rs-booking-id').textContent = `#${bookingId}`;
+  document.getElementById('rs-reason').value = '';
+  const sel = document.getElementById('rs-new-slot');
+  sel.innerHTML = '<option value="">Select new slot</option>';
+  const { data } = await db.from('slots')
+    .select('id,date,time,capacity,booked_count,segments(name)')
+    .gte('date', new Date().toISOString().split('T')[0])
+    .order('date').order('time');
+  (data||[]).filter(s=>s.booked_count<s.capacity && s.id !== oldSlotId).forEach(s => {
+    const o = document.createElement('option'); o.value = s.id;
+    o.textContent = `${s.segments?.name} · ${formatDate(s.date)} ${formatTime(s.time)} (${s.capacity-s.booked_count} open)`;
+    sel.appendChild(o);
+  });
+  openModal('modal-reschedule');
+}
+
+async function doReschedule() {
+  const newSlotId = document.getElementById('rs-new-slot').value;
+  const reason = document.getElementById('rs-reason').value;
+  if (!newSlotId) { toast('Please select a new slot.','error'); return; }
+  // Log reschedule
+  await db.from('reschedules').insert({ booking_id: rescheduleBookingId, old_slot_id: rescheduleOldSlotId, new_slot_id: newSlotId, reason });
+  // Update booking
+  const { error } = await db.from('bookings').update({ slot_id: newSlotId, status: 'rescheduled' }).eq('id', rescheduleBookingId);
+  if (error) { toast(error.message,'error'); return; }
+  toast('Booking rescheduled!');
+  closeModal('modal-reschedule');
+  closeSidePanel();
+  loadBookings();
+}
+
+// ── WORK REPORTS ──────────────────────────────────────────────
+async function loadReports() {
+  const date = document.getElementById('rep-date').value;
+  const status = document.getElementById('rep-status').value;
+  const container = document.getElementById('reports-table');
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
+
+  let q = db.from('work_reports').select(`
+    id,work_status,final_amount,payment_mode,executed_date,submitted_at,
+    bookings(id,service_details,customers(name,phone),slots(date,segments(name)))
+  `).order('created_at', { ascending: false }).limit(100);
+  if (status) q = q.eq('work_status', status);
+  if (date) q = q.eq('executed_date', date);
+  const { data } = await q;
+  if (!data?.length) { container.innerHTML = '<div class="loading-overlay">No reports found.</div>'; return; }
+
+  container.innerHTML = `<div class="data-table-wrap"><table class="data-table">
+    <thead><tr>${['Report #','Booking #','Customer','Segment','Date','Amount','Status','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>
+    ${data.map(r=>`<tr>
+      <td style="font-weight:700;color:var(--blue-700)">#${r.id}</td>
+      <td>#${r.bookings?.id||'—'}</td>
+      <td>${r.bookings?.customers?.name||'—'}</td>
+      <td>${r.bookings?.slots?.segments?.name||'—'}</td>
+      <td>${formatDate(r.executed_date||r.bookings?.slots?.date)}</td>
+      <td style="font-weight:600">${formatCurrency(r.final_amount)}</td>
+      <td><span class="badge badge-${r.work_status||'pending'}">${r.work_status||'pending'}</span></td>
+      <td><button class="row-btn view" onclick="editReportStatus(${r.id},'${r.work_status}')">Edit</button></td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+async function editReportStatus(reportId, curStatus) {
+  const newStatus = prompt(`Current: ${curStatus}\nNew status (pending/in_progress/completed/rescheduled):`, curStatus);
+  if (!newStatus) return;
+  const { error } = await db.from('work_reports').update({ work_status: newStatus }).eq('id', reportId);
+  if (error) { toast(error.message,'error'); return; }
+  toast('Status updated!'); loadReports();
+}
+
+function showView(view) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  event?.target?.closest('.nav-item')?.classList.add('active');
+  ['slots','bookings','reports'].forEach(v => {
+    document.getElementById('view-'+v).style.display = v===view?'block':'none';
+  });
+  const titles = { slots:['Slot Management','Create and manage slot capacity'], bookings:['Place Work View','All bookings with copy-paste dispatch'], reports:['Work Reports','Review and edit submitted reports'] };
+  document.getElementById('page-title').textContent = titles[view][0];
+  document.getElementById('page-subtitle').textContent = titles[view][1];
+  const topBtn = document.getElementById('topbar-action');
+  topBtn.textContent = view==='slots'?'+ Create Slot':'🔄 Refresh';
+  topBtn.onclick = view==='slots' ? openCreateSlotModal : () => { if(view==='bookings') loadBookings(); else loadReports(); };
+  if (view==='bookings') { document.getElementById('bk-date').value=new Date().toISOString().split('T')[0]; loadBookings(); }
+  if (view==='reports') { document.getElementById('rep-date').value=new Date().toISOString().split('T')[0]; loadReports(); }
+}
+</script>
+</body>
+</html>

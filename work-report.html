@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Handy sQuad — Work Report</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing:border-box;margin:0;padding:0; }
+:root {
+  --blue-700:#1d4ed8; --blue-500:#3b82f6; --blue-100:#dbeafe; --blue-50:#eff6ff;
+  --white:#fff; --slate-800:#1e293b; --slate-600:#475569; --slate-400:#94a3b8;
+  --slate-200:#e2e8f0; --slate-100:#f1f5f9; --slate-50:#f8fafc;
+}
+body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color:var(--slate-800);min-height:100vh;padding:0; }
+
+/* Header */
+.app-header {
+  background:linear-gradient(135deg,#1e3a8a,var(--blue-700));
+  padding:16px 20px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:50;
+}
+.header-icon { width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center; }
+.header-title { font-size:17px;font-weight:800;color:#fff; }
+.header-sub { font-size:11px;color:#93c5fd;font-weight:600; }
+
+/* States */
+#state-loading,.state-error,.state-success { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:40px 20px;text-align:center; }
+.state-icon { font-size:56px;margin-bottom:16px; }
+.state-title { font-size:20px;font-weight:800;color:var(--slate-800);margin-bottom:8px; }
+.state-desc { font-size:14px;color:var(--slate-400);max-width:300px; }
+.spinner { width:40px;height:40px;border:3px solid var(--slate-200);border-top-color:var(--blue-500);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Form */
+.form-wrap { max-width:540px;margin:0 auto;padding:20px 16px 40px; }
+
+.job-card {
+  background:linear-gradient(135deg,var(--blue-700),var(--blue-500));
+  border-radius:18px;padding:22px;margin-bottom:24px;color:#fff;
+}
+.job-card-header { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.7;margin-bottom:8px; }
+.job-customer { font-size:22px;font-weight:800;margin-bottom:4px; }
+.job-meta { font-size:13px;opacity:.85;margin-bottom:16px; }
+.job-pills { display:flex;flex-wrap:wrap;gap:8px; }
+.job-pill { background:rgba(255,255,255,.18);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600; }
+.job-amount { background:rgba(255,255,255,.22);border-radius:12px;padding:12px 16px;margin-top:14px;display:flex;justify-content:space-between;align-items:center; }
+.job-amount-label { font-size:11px;opacity:.7;font-weight:600; }
+.job-amount-val { font-size:18px;font-weight:800; }
+
+.section-card { background:var(--white);border-radius:16px;border:1px solid var(--slate-200);padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.section-title { font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--blue-700);margin-bottom:16px;display:flex;align-items:center;gap:8px; }
+.form-group { margin-bottom:16px; }
+label { display:block;font-size:13px;font-weight:600;color:var(--slate-600);margin-bottom:6px; }
+.req { color:#dc2626; }
+input,select,textarea {
+  width:100%;padding:12px 14px;border:2px solid var(--slate-200);border-radius:11px;
+  font-size:15px;color:var(--slate-800);background:var(--slate-50);font-family:inherit;
+  transition:border .2s,box-shadow .2s,background .2s;
+}
+input:focus,select:focus,textarea:focus { outline:none;border-color:var(--blue-500);background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+textarea { resize:vertical;min-height:80px; }
+
+.time-btn-group { display:flex;gap:8px; }
+.time-btn-group input { flex:1; }
+.now-btn {
+  padding:12px 14px;background:var(--blue-50);border:2px solid var(--blue-100);border-radius:11px;
+  font-size:12px;font-weight:700;color:var(--blue-700);cursor:pointer;white-space:nowrap;transition:all .2s;
+}
+.now-btn:hover { background:var(--blue-100); }
+
+.grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+
+.submit-btn {
+  width:100%;padding:17px;background:linear-gradient(135deg,var(--blue-700),var(--blue-500));
+  color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;
+  margin-top:8px;box-shadow:0 6px 20px rgba(59,130,246,.35);font-family:inherit;
+  transition:all .2s;
+}
+.submit-btn:hover { transform:translateY(-2px);box-shadow:0 10px 28px rgba(59,130,246,.45); }
+.submit-btn:disabled { opacity:.6;cursor:not-allowed;transform:none; }
+
+.draft-btn {
+  width:100%;padding:13px;background:var(--slate-100);color:var(--slate-600);
+  border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;
+  margin-top:10px;font-family:inherit;transition:background .2s;
+}
+.draft-btn:hover { background:var(--slate-200); }
+
+.submitted-view { display:none;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:40px 20px;text-align:center; }
+.submitted-view.show { display:flex; }
+.success-circle { width:88px;height:88px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 8px 28px rgba(34,197,94,.3); }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-icon">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+  </div>
+  <div>
+    <div class="header-title">Handy sQuad</div>
+    <div class="header-sub" id="header-booking-id">Work Report Form</div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="state-loading" style="display:flex">
+  <div class="spinner"></div>
+  <div style="color:var(--slate-400);font-size:14px">Loading job details…</div>
+</div>
+
+<!-- Error -->
+<div class="state-error" id="state-error" style="display:none">
+  <div class="state-icon">⚠️</div>
+  <div class="state-title">Booking Not Found</div>
+  <div class="state-desc">This link is invalid or the booking doesn't exist. Contact your supervisor.</div>
+</div>
+
+<!-- Already submitted -->
+<div class="state-error" id="state-submitted" style="display:none">
+  <div class="state-icon">🔒</div>
+  <div class="state-title">Report Already Submitted</div>
+  <div class="state-desc">This work report has already been filled. Contact scheduling if you need to make changes.</div>
+</div>
+
+<!-- Form -->
+<div class="form-wrap" id="form-wrap" style="display:none">
+  <!-- Job Summary Card -->
+  <div class="job-card">
+    <div class="job-card-header">Job Summary · Read Only</div>
+    <div class="job-customer" id="jc-customer">—</div>
+    <div class="job-meta" id="jc-meta">—</div>
+    <div class="job-pills">
+      <div class="job-pill" id="jc-segment">—</div>
+      <div class="job-pill" id="jc-date">—</div>
+      <div class="job-pill" id="jc-time">—</div>
+    </div>
+    <div class="job-amount">
+      <div><div class="job-amount-label">Work Details</div><div id="jc-work" style="font-size:13px;font-weight:600;margin-top:3px">—</div></div>
+      <div style="text-align:right"><div class="job-amount-label">Booking Amount</div><div class="job-amount-val" id="jc-amount">—</div></div>
+    </div>
+  </div>
+
+  <!-- Section 2: Time & Status -->
+  <div class="section-card">
+    <div class="section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Time Tracking & Status
+    </div>
+    <div class="form-group">
+      <label>Date of Execution <span class="req">*</span></label>
+      <input type="date" id="f-exec-date"/>
+    </div>
+    <div class="form-group">
+      <label>Time of Arrival (Site In) <span class="req">*</span></label>
+      <div class="time-btn-group">
+        <input type="time" id="f-site-in"/>
+        <button class="now-btn" onclick="setNow('f-site-in')">Now</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Work Started Time <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
+      <div class="time-btn-group">
+        <input type="time" id="f-work-start"/>
+        <button class="now-btn" onclick="setNow('f-work-start')">Now</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Time of Departure (Site Out) <span class="req">*</span></label>
+      <div class="time-btn-group">
+        <input type="time" id="f-site-out"/>
+        <button class="now-btn" onclick="setNow('f-site-out')">Now</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Work Status <span class="req">*</span></label>
+      <select id="f-status">
+        <option value="">Select status</option>
+        <option value="completed">✅ Completed</option>
+        <option value="in_progress">🔄 In Progress</option>
+        <option value="rescheduled">📅 Rescheduled</option>
+        <option value="pending">⏳ Pending</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Section 3: Financials -->
+  <div class="section-card">
+    <div class="section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Financials Collected
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Final Amount (₹) <span class="req">*</span></label>
+        <input type="number" id="f-final" placeholder="0" inputmode="numeric"/>
+      </div>
+      <div class="form-group">
+        <label>Advance Paid (₹)</label>
+        <input type="number" id="f-advance" placeholder="0" inputmode="numeric"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Material Cost (₹) <span class="req">*</span></label>
+      <input type="number" id="f-material" placeholder="0" inputmode="numeric"/>
+    </div>
+    <div class="form-group">
+      <label>Payment Mode <span class="req">*</span></label>
+      <select id="f-payment-mode">
+        <option value="">Select mode</option>
+        <option value="cash">💵 Cash</option>
+        <option value="upi">📱 UPI</option>
+        <option value="card">💳 Card</option>
+        <option value="online_transfer">🏦 Online Transfer</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Section 4: Extras -->
+  <div class="section-card">
+    <div class="section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Job Feedback
+    </div>
+    <div class="form-group">
+      <label>Distance Travelled (km) <span class="req">*</span></label>
+      <input type="number" id="f-distance" placeholder="0" inputmode="decimal"/>
+    </div>
+    <div class="form-group">
+      <label>Technician Notes <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
+      <textarea id="f-notes" placeholder="Any notes about the job…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Issues Logged <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
+      <textarea id="f-issues" placeholder="Any major failures or issues…"></textarea>
+    </div>
+    <!-- Supervisor — shown only for Housekeeping -->
+    <div class="form-group" id="supervisor-field" style="display:none">
+      <label>Supervisor <span class="req">*</span></label>
+      <input type="text" id="f-supervisor" placeholder="Supervisor name"/>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submit-btn" onclick="submitReport()">Submit Work Report</button>
+  <button class="draft-btn" id="draft-btn" onclick="saveDraft()">Save Draft</button>
+  <p style="text-align:center;font-size:11px;color:var(--slate-400);margin-top:12px">Report will be locked after submission.</p>
+</div>
+
+<!-- Success -->
+<div class="submitted-view" id="success-view">
+  <div class="success-circle">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  </div>
+  <div class="state-title">Report Submitted!</div>
+  <div class="state-desc">Your work report has been saved successfully. The scheduling team will review it.</div>
+  <div style="margin-top:24px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px 20px;text-align:left;max-width:320px">
+    <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px">SUBMITTED SUMMARY</div>
+    <div id="success-summary" style="font-size:13px;color:var(--slate-600);line-height:1.8"></div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let bookingData = null;
+let bookingId = null;
+let isDraft = false;
+
+function formatTime(t) {
+  if (!t) return '—';
+  const [h,m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`;
+}
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  bookingId = params.get('booking_id') || parseInt(window.location.pathname.split('/').pop());
+  if (!bookingId) { showState('error'); return; }
+  document.getElementById('header-booking-id').textContent = `Booking #${bookingId}`;
+
+  // Check if already submitted
+  const { data: existing } = await db.from('work_reports').select('id,work_status,submitted_at').eq('booking_id', bookingId).maybeSingle();
+  if (existing && existing.submitted_at) { showState('submitted'); return; }
+
+  // Fetch booking via RPC
+  const { data: bk, error } = await db.rpc('get_booking_for_report', { p_booking_id: parseInt(bookingId) });
+  if (error || !bk) { showState('error'); return; }
+  bookingData = bk;
+
+  // Populate job card
+  document.getElementById('jc-customer').textContent = bk.customer_name || '—';
+  document.getElementById('jc-meta').textContent = `${bk.customer_place||''} · ${bk.customer_phone||''}`;
+  document.getElementById('jc-segment').textContent = bk.segment_name || '—';
+  document.getElementById('jc-date').textContent = formatDate(bk.slot_date);
+  document.getElementById('jc-time').textContent = formatTime(bk.slot_time);
+  document.getElementById('jc-work').textContent = bk.service_details || '—';
+  document.getElementById('jc-amount').textContent = `₹${bk.total_amount||0}`;
+
+  // Show supervisor for housekeeping
+  if ((bk.segment_name||'').toLowerCase().includes('housekeeping')) {
+    document.getElementById('supervisor-field').style.display = 'block';
+  }
+
+  // Pre-fill
+  document.getElementById('f-exec-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-advance').value = bk.advance_amount || 0;
+
+  // Load draft if exists
+  if (existing) loadDraftValues(existing);
+
+  showState('form');
+})();
+
+function showState(state) {
+  document.getElementById('state-loading').style.display = 'none';
+  document.getElementById('state-error').style.display = state==='error'?'flex':'none';
+  document.getElementById('state-submitted').style.display = state==='submitted'?'flex':'none';
+  document.getElementById('form-wrap').style.display = state==='form'?'block':'none';
+  document.getElementById('success-view').classList.toggle('show', state==='success');
+}
+
+function setNow(fieldId) {
+  const now = new Date();
+  document.getElementById(fieldId).value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+async function submitReport() {
+  const status = document.getElementById('f-status').value;
+  const siteIn = document.getElementById('f-site-in').value;
+  const siteOut = document.getElementById('f-site-out').value;
+  const finalAmt = document.getElementById('f-final').value;
+  const material = document.getElementById('f-material').value;
+  const payMode = document.getElementById('f-payment-mode').value;
+  const distance = document.getElementById('f-distance').value;
+  const execDate = document.getElementById('f-exec-date').value;
+
+  if (!status||!siteIn||!siteOut||!finalAmt||!material||!payMode||!distance||!execDate) {
+    showToast('Please fill all required fields.','error'); return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled=true; btn.textContent='Submitting…';
+
+  const payload = buildPayload(false);
+  const { data: existing } = await db.from('work_reports').select('id').eq('booking_id', bookingId).maybeSingle();
+
+  let error;
+  if (existing) {
+    ({ error } = await db.from('work_reports').update({...payload, submitted_at: new Date().toISOString()}).eq('id', existing.id));
+  } else {
+    ({ error } = await db.from('work_reports').insert({...payload, booking_id: parseInt(bookingId), submitted_at: new Date().toISOString()}));
+  }
+
+  if (error) { showToast(error.message,'error'); btn.disabled=false; btn.textContent='Submit Work Report'; return; }
+
+  // Show success
+  document.getElementById('success-summary').innerHTML = `
+    <div>Status: <strong>${status}</strong></div>
+    <div>Final Amount: <strong>₹${finalAmt}</strong></div>
+    <div>Payment: <strong>${payMode.replace('_',' ')}</strong></div>
+    <div>Distance: <strong>${distance} km</strong></div>
+    <div>Site In: <strong>${formatTime(siteIn)}</strong> · Out: <strong>${formatTime(siteOut)}</strong></div>`;
+  showState('success');
+}
+
+async function saveDraft() {
+  const btn = document.getElementById('draft-btn');
+  btn.textContent = 'Saving…'; btn.disabled=true;
+
+  const payload = buildPayload(true);
+  const { data: existing } = await db.from('work_reports').select('id').eq('booking_id', bookingId).maybeSingle();
+  let error;
+  if (existing) {
+    ({ error } = await db.from('work_reports').update(payload).eq('id', existing.id));
+  } else {
+    ({ error } = await db.from('work_reports').insert({...payload, booking_id: parseInt(bookingId)}));
+  }
+  if (error) { showToast(error.message,'error'); }
+  else { showToast('Draft saved!'); }
+  btn.textContent='Save Draft'; btn.disabled=false;
+}
+
+function buildPayload(isDraft) {
+  return {
+    work_status: document.getElementById('f-status').value || 'pending',
+    site_in: document.getElementById('f-site-in').value || null,
+    work_started_time: document.getElementById('f-work-start').value || null,
+    site_out: document.getElementById('f-site-out').value || null,
+    executed_date: document.getElementById('f-exec-date').value || null,
+    final_amount: parseFloat(document.getElementById('f-final').value) || null,
+    advance: parseFloat(document.getElementById('f-advance').value) || 0,
+    material_cost: parseFloat(document.getElementById('f-material').value) || 0,
+    payment_mode: document.getElementById('f-payment-mode').value || null,
+    distance: parseFloat(document.getElementById('f-distance').value) || null,
+    notes: document.getElementById('f-notes').value || null,
+    issues_logged: document.getElementById('f-issues').value || null,
+    supervisor: document.getElementById('f-supervisor').value || null,
+    estimated_amount: bookingData?.total_amount || null,
+    updated_at: new Date().toISOString()
+  };
+}
+
+function loadDraftValues(d) {
+  if (d.work_status) document.getElementById('f-status').value = d.work_status;
+  if (d.site_in) document.getElementById('f-site-in').value = d.site_in;
+  if (d.work_started_time) document.getElementById('f-work-start').value = d.work_started_time;
+  if (d.site_out) document.getElementById('f-site-out').value = d.site_out;
+  if (d.final_amount) document.getElementById('f-final').value = d.final_amount;
+  if (d.advance) document.getElementById('f-advance').value = d.advance;
+  if (d.material_cost) document.getElementById('f-material').value = d.material_cost;
+  if (d.payment_mode) document.getElementById('f-payment-mode').value = d.payment_mode;
+  if (d.distance) document.getElementById('f-distance').value = d.distance;
+  if (d.notes) document.getElementById('f-notes').value = d.notes;
+  if (d.issues_logged) document.getElementById('f-issues').value = d.issues_logged;
+  if (d.supervisor) document.getElementById('f-supervisor').value = d.supervisor;
+}
+
+// Simple inline toast for this page (no app.js loaded)
+function showToast(msg, type='success') {
+  let c = document.getElementById('tc');
+  if (!c) { c=document.createElement('div');c.id='tc';c.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center';document.body.appendChild(c); }
+  const t = document.createElement('div');
+  t.style.cssText=`padding:12px 24px;border-radius:24px;color:#fff;font-size:14px;font-weight:600;
+    box-shadow:0 4px 20px rgba(0,0,0,.15);white-space:nowrap;
+    background:${type==='error'?'#dc2626':'#1d4ed8'}`;
+  t.textContent=msg; c.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+</script>
+</body>
+</html>

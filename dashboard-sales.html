@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Handy sQuad — Sales</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing:border-box;margin:0;padding:0; }
+:root {
+  --blue-900:#1e3a8a; --blue-700:#1d4ed8; --blue-500:#3b82f6;
+  --blue-100:#dbeafe; --blue-50:#eff6ff;
+  --white:#fff; --slate-800:#1e293b; --slate-600:#475569; --slate-400:#94a3b8;
+  --slate-200:#e2e8f0; --slate-100:#f1f5f9; --slate-50:#f8fafc;
+}
+body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color:var(--slate-800);min-height:100vh; }
+
+/* Layout */
+.app-shell { display:flex;min-height:100vh; }
+.sidebar {
+  width:240px;background:linear-gradient(180deg,var(--blue-900),var(--blue-700));
+  display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;bottom:0;z-index:100;
+}
+.sidebar-logo { padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:16px; }
+.sidebar-logo .name { font-size:20px;font-weight:800;color:#fff;letter-spacing:-.4px; }
+.sidebar-logo .name span { color:#93c5fd; }
+.sidebar-logo .role { font-size:11px;color:#93c5fd;font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-top:2px; }
+.nav-item {
+  display:flex;align-items:center;gap:12px;padding:11px 24px;color:rgba(255,255,255,.7);
+  font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border-left:3px solid transparent;
+  text-decoration:none;
+}
+.nav-item:hover,.nav-item.active { color:#fff;background:rgba(255,255,255,.1);border-left-color:#93c5fd; }
+.nav-item svg { flex-shrink:0; }
+.sidebar-bottom { margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,.1); }
+
+.main { margin-left:240px;flex:1;display:flex;flex-direction:column; }
+.topbar {
+  background:var(--white);border-bottom:1px solid var(--slate-200);
+  padding:16px 28px;display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;z-index:50;
+}
+.page-title { font-size:20px;font-weight:800;color:var(--slate-800); }
+.page-subtitle { font-size:13px;color:var(--slate-400);font-weight:500; }
+.content { padding:28px; }
+
+/* Stats row */
+.stats-row { display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px; }
+.stat-card {
+  background:var(--white);border-radius:16px;padding:20px;
+  border:1px solid var(--slate-200);
+  display:flex;align-items:center;gap:16px;
+}
+.stat-icon { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.stat-val { font-size:26px;font-weight:800;color:var(--slate-800);line-height:1; }
+.stat-label { font-size:12px;color:var(--slate-400);font-weight:500;margin-top:3px; }
+
+/* Filters */
+.filter-bar { display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap; }
+.filter-bar input,.filter-bar select {
+  padding:9px 14px;border:2px solid var(--slate-200);border-radius:10px;
+  font-size:13px;font-family:inherit;color:var(--slate-800);background:var(--white);
+}
+.filter-bar input:focus,.filter-bar select:focus { outline:none;border-color:var(--blue-500); }
+
+/* Segment grid */
+.segment-section { margin-bottom:32px; }
+.segment-header {
+  display:flex;align-items:center;gap:12px;margin-bottom:12px;
+  padding:10px 16px;background:var(--white);border-radius:12px;border:1px solid var(--slate-200);
+}
+.segment-dot { width:10px;height:10px;border-radius:50%;background:var(--blue-500); }
+.segment-name { font-size:15px;font-weight:700;color:var(--slate-800); }
+.segment-count { font-size:12px;color:var(--slate-400);font-weight:500;margin-left:auto; }
+
+.slots-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px; }
+.slot-card {
+  border-radius:14px;padding:16px;cursor:pointer;transition:all .2s;
+  border:2px solid transparent;position:relative;overflow:hidden;
+}
+.slot-card:hover { transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1); }
+.slot-card.available { background:#f0fdf4;border-color:#86efac; }
+.slot-card.booked { background:#eff6ff;border-color:#93c5fd; }
+.slot-card.rescheduled { background:#fffbeb;border-color:#fcd34d; }
+.slot-card.cancelled { background:#fef2f2;border-color:#fca5a5;opacity:.7; }
+.slot-card.full { background:#fef2f2;border-color:#fca5a5;cursor:not-allowed;opacity:.6; }
+.slot-time { font-size:17px;font-weight:800;color:var(--slate-800); }
+.slot-date { font-size:11px;color:var(--slate-400);font-weight:600;margin-top:2px; }
+.slot-customer { font-size:13px;font-weight:600;color:var(--blue-700);margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.slot-work { font-size:11px;color:var(--slate-500);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.slot-capacity { font-size:11px;font-weight:600;color:#16a34a;margin-top:8px; }
+.slot-cap-full { color:#dc2626; }
+.empty-seg { color:var(--slate-400);font-size:13px;padding:12px 0; }
+
+/* Modal wide */
+.modal-box.wide { max-width:680px; }
+.form-row { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+.section-divider { font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--blue-700);
+  padding:8px 0 12px;border-bottom:2px solid var(--blue-100);margin-bottom:16px; }
+.customer-found { background:var(--blue-50);border:1px solid var(--blue-100);border-radius:10px;padding:12px 16px;margin-bottom:12px; }
+.customer-found .cf-name { font-weight:700;color:var(--slate-800); }
+.customer-found .cf-detail { font-size:12px;color:var(--slate-500);margin-top:2px; }
+
+/* Loading */
+.loading-overlay { display:flex;align-items:center;justify-content:center;padding:60px;color:var(--slate-400);font-size:14px;gap:10px; }
+.spinner { display:inline-block;width:20px;height:20px;border:2px solid var(--slate-200);border-top-color:var(--blue-500);border-radius:50%;animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+@media(max-width:768px) {
+  .sidebar { transform:translateX(-100%);transition:transform .3s; }
+  .sidebar.open { transform:none; }
+  .main { margin-left:0; }
+  .stats-row { grid-template-columns:1fr 1fr; }
+  .form-row { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="name">Handy <span>sQuad</span></div>
+      <div class="role">Sales Portal</div>
+    </div>
+    <a class="nav-item active" href="#" onclick="showView('slots')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Slot Grid
+    </a>
+    <a class="nav-item" href="#" onclick="showView('bookings')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      My Bookings
+    </a>
+    <div class="sidebar-bottom">
+      <div id="user-badge-sidebar"></div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">Slot Grid</div>
+        <div class="page-subtitle" id="page-subtitle">Click a slot to create a booking</div>
+      </div>
+      <div id="user-badge-top"></div>
+    </div>
+
+    <div class="content">
+      <!-- Stats -->
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-icon" style="background:#eff6ff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div><div class="stat-val" id="stat-total">—</div><div class="stat-label">Total Slots Today</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#f0fdf4"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><div class="stat-val" id="stat-available">—</div><div class="stat-label">Available</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#eff6ff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="stat-val" id="stat-booked">—</div><div class="stat-label">Booked</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div><div class="stat-val" id="stat-revenue">—</div><div class="stat-label">Today Revenue</div></div></div>
+      </div>
+
+      <!-- Slot Grid View -->
+      <div id="view-slots">
+        <div class="filter-bar">
+          <input type="date" id="filter-date" onchange="loadSlots()"/>
+          <select id="filter-segment" onchange="loadSlots()">
+            <option value="">All Segments</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="loadSlots()">🔄 Refresh</button>
+        </div>
+        <div id="slots-container"><div class="loading-overlay"><div class="spinner"></div> Loading slots…</div></div>
+      </div>
+
+      <!-- My Bookings View -->
+      <div id="view-bookings" style="display:none">
+        <div class="filter-bar">
+          <input type="date" id="bk-date" onchange="loadMyBookings()"/>
+          <select id="bk-status" onchange="loadMyBookings()">
+            <option value="">All Status</option>
+            <option>booked</option><option>completed</option><option>cancelled</option><option>rescheduled</option>
+          </select>
+        </div>
+        <div id="bookings-table"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Booking Creation Modal -->
+<div class="modal-overlay" id="modal-booking">
+  <div class="modal-box wide">
+    <div class="modal-header">
+      <div class="modal-title">Create Booking</div>
+      <button class="modal-close" onclick="closeModal('modal-booking')">&times;</button>
+    </div>
+
+    <div class="section-divider">Slot Details (Auto-filled)</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="bk-slot-date" readonly/></div>
+      <div class="form-group"><label class="form-label">Time</label><input class="form-input" id="bk-slot-time" readonly/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Segment</label><input class="form-input" id="bk-slot-segment" readonly/></div>
+
+    <div class="section-divider" style="margin-top:8px">Customer</div>
+    <div class="form-group">
+      <label class="form-label">Search by Phone</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="bk-phone-search" placeholder="Enter phone number" style="flex:1"/>
+        <button class="btn btn-secondary btn-sm" onclick="searchCustomer()">Search</button>
+      </div>
+    </div>
+    <div id="customer-found-banner" style="display:none" class="customer-found">
+      <div class="cf-name" id="cf-name"></div>
+      <div class="cf-detail" id="cf-detail"></div>
+    </div>
+    <div id="customer-new-fields">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="bk-cname" placeholder="Customer name"/></div>
+        <div class="form-group"><label class="form-label">Phone *</label><input class="form-input" id="bk-cphone" placeholder="Phone"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Alt Phone</label><input class="form-input" id="bk-calt" placeholder="Alternative phone"/></div>
+        <div class="form-group"><label class="form-label">Place</label><input class="form-input" id="bk-cplace" placeholder="Area / locality"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">Address</label><input class="form-input" id="bk-caddress" placeholder="Full address"/></div>
+      <div class="form-group"><label class="form-label">Location Link</label><input class="form-input" id="bk-clocation" placeholder="Google Maps link"/></div>
+    </div>
+
+    <div class="section-divider" style="margin-top:8px">Service Details</div>
+    <div class="form-group"><label class="form-label">Work Details *</label><textarea class="form-textarea" id="bk-work-details" placeholder="Describe the service required…"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Total Amount (₹) *</label><input class="form-input" type="number" id="bk-amount" placeholder="0"/></div>
+      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="bk-advance" placeholder="0"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Payment Status</label>
+      <select class="form-select" id="bk-pay-status">
+        <option value="pending">Pending</option><option value="paid">Paid</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Attachments Link</label><input class="form-input" id="bk-attachment" placeholder="Drive / photo link"/></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-booking')">Cancel</button>
+      <button class="btn btn-primary" onclick="createBooking()" id="create-btn">Create Booking</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let selectedSlotId = null;
+let selectedCustomerId = null;
+let allSegments = [];
+
+(async () => {
+  currentUser = await requireAuth(['sales','admin']);
+  if (!currentUser) return;
+  renderUserBadge(currentUser, 'user-badge-top');
+  renderUserBadge(currentUser, 'user-badge-sidebar');
+  await loadSegments();
+  document.getElementById('filter-date').value = new Date().toISOString().split('T')[0];
+  await loadSlots();
+  await loadStats();
+})();
+
+async function loadSegments() {
+  const { data } = await db.from('segments').select('*').order('name');
+  allSegments = data || [];
+  const sel = document.getElementById('filter-segment');
+  allSegments.forEach(s => {
+    const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; sel.appendChild(o);
+  });
+}
+
+async function loadStats() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data: slots } = await db.from('slots').select('id,capacity,booked_count').eq('date', today);
+  if (!slots) return;
+  const total = slots.reduce((a,s) => a + s.capacity, 0);
+  const booked = slots.reduce((a,s) => a + s.booked_count, 0);
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-available').textContent = total - booked;
+  document.getElementById('stat-booked').textContent = booked;
+
+  const { data: bks } = await db.from('bookings').select('total_amount,slot_id,slots!inner(date)')
+    .eq('slots.date', today).neq('status','cancelled');
+  const rev = (bks || []).reduce((a,b) => a + Number(b.total_amount), 0);
+  document.getElementById('stat-revenue').textContent = formatCurrency(rev);
+}
+
+async function loadSlots() {
+  const date = document.getElementById('filter-date').value || new Date().toISOString().split('T')[0];
+  const segId = document.getElementById('filter-segment').value;
+  const container = document.getElementById('slots-container');
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Loading…</div>';
+
+  let q = db.from('slots').select(`id,date,time,capacity,booked_count,segment_id,segments(name)`)
+    .eq('date', date).order('time');
+  if (segId) q = q.eq('segment_id', segId);
+  const { data: slots } = await q;
+  if (!slots || !slots.length) { container.innerHTML = '<div class="loading-overlay">No slots for this date.</div>'; return; }
+
+  // Fetch bookings for these slots
+  const slotIds = slots.map(s => s.id);
+  const { data: bookings } = await db.from('bookings')
+    .select('id,slot_id,status,service_details,total_amount,customers(name)')
+    .in('slot_id', slotIds).neq('status','cancelled');
+
+  const bookingsBySlot = {};
+  (bookings || []).forEach(b => { bookingsBySlot[b.slot_id] = b; });
+
+  // Group by segment
+  const grouped = {};
+  slots.forEach(s => {
+    const sn = s.segments?.name || 'Other';
+    if (!grouped[sn]) grouped[sn] = [];
+    grouped[sn].push(s);
+  });
+
+  let html = '';
+  Object.entries(grouped).forEach(([segName, segSlots]) => {
+    html += `<div class="segment-section">
+      <div class="segment-header">
+        <div class="segment-dot"></div>
+        <div class="segment-name">${segName}</div>
+        <div class="segment-count">${segSlots.length} slot(s)</div>
+      </div>
+      <div class="slots-grid">`;
+    segSlots.forEach(slot => {
+      const bk = bookingsBySlot[slot.id];
+      const isFull = slot.booked_count >= slot.capacity;
+      const cardClass = bk ? (bk.status === 'rescheduled' ? 'rescheduled' : 'booked') : (isFull ? 'full' : 'available');
+      html += `<div class="slot-card ${cardClass}" onclick="slotClick(${slot.id},'${segName}','${slot.date}','${slot.time}',${isFull})">
+        <div class="slot-time">${formatTime(slot.time)}</div>
+        <div class="slot-date">${formatDate(slot.date)}</div>
+        ${bk ? `<div class="slot-customer">${bk.customers?.name || '—'}</div><div class="slot-work">${bk.service_details || ''}</div>` : ''}
+        <div class="slot-capacity ${isFull?'slot-cap-full':''}">${isFull?'Full':slot.capacity - slot.booked_count + ' open'}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  container.innerHTML = html;
+}
+
+function slotClick(slotId, segName, date, time, isFull) {
+  if (isFull) { toast('This slot is full.', 'warning'); return; }
+  selectedSlotId = slotId;
+  selectedCustomerId = null;
+  // Reset form
+  ['bk-cname','bk-cphone','bk-calt','bk-cplace','bk-caddress','bk-clocation',
+   'bk-work-details','bk-amount','bk-advance','bk-attachment','bk-phone-search'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('customer-found-banner').style.display = 'none';
+  document.getElementById('customer-new-fields').style.display = 'block';
+  document.getElementById('bk-slot-date').value = formatDate(date);
+  document.getElementById('bk-slot-time').value = formatTime(time);
+  document.getElementById('bk-slot-segment').value = segName;
+  openModal('modal-booking');
+}
+
+async function searchCustomer() {
+  const phone = document.getElementById('bk-phone-search').value.trim();
+  if (!phone) return;
+  const { data } = await db.from('customers').select('*').eq('phone', phone).maybeSingle();
+  if (data) {
+    selectedCustomerId = data.id;
+    document.getElementById('cf-name').textContent = data.name;
+    document.getElementById('cf-detail').textContent = `${data.phone} · ${data.place || ''} · ${data.address || ''}`;
+    document.getElementById('customer-found-banner').style.display = 'block';
+    document.getElementById('customer-new-fields').style.display = 'none';
+    document.getElementById('bk-cphone').value = data.phone;
+  } else {
+    selectedCustomerId = null;
+    document.getElementById('customer-found-banner').style.display = 'none';
+    document.getElementById('customer-new-fields').style.display = 'block';
+    document.getElementById('bk-cphone').value = phone;
+    toast('Customer not found — fill in details below.', 'warning');
+  }
+}
+
+async function createBooking() {
+  const btn = document.getElementById('create-btn');
+  const workDetails = document.getElementById('bk-work-details').value.trim();
+  const amount = parseFloat(document.getElementById('bk-amount').value) || 0;
+  const advance = parseFloat(document.getElementById('bk-advance').value) || 0;
+  if (!workDetails || !amount) { toast('Work details and amount are required.', 'error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Creating…';
+
+  try {
+    let custId = selectedCustomerId;
+    if (!custId) {
+      const name = document.getElementById('bk-cname').value.trim();
+      const phone = document.getElementById('bk-cphone').value.trim();
+      if (!name || !phone) { toast('Customer name and phone required.', 'error'); btn.disabled=false;btn.textContent='Create Booking';return; }
+      const { data: nc, error: ce } = await db.from('customers').insert({
+        name, phone,
+        alt_phone: document.getElementById('bk-calt').value.trim() || null,
+        place: document.getElementById('bk-cplace').value.trim() || null,
+        address: document.getElementById('bk-caddress').value.trim() || null,
+        location_link: document.getElementById('bk-clocation').value.trim() || null
+      }).select().single();
+      if (ce) throw ce;
+      custId = nc.id;
+    }
+    const { error: be } = await db.from('bookings').insert({
+      customer_id: custId,
+      slot_id: selectedSlotId,
+      service_details: workDetails,
+      total_amount: amount,
+      advance_amount: advance,
+      service_amount: amount,
+      payment_status: document.getElementById('bk-pay-status').value,
+      attachment_link: document.getElementById('bk-attachment').value.trim() || null,
+      created_by_user_id: currentUser.id,
+      status: 'booked'
+    });
+    if (be) throw be;
+    toast('Booking created successfully!');
+    closeModal('modal-booking');
+    await loadSlots();
+    await loadStats();
+  } catch (e) {
+    toast(e.message || 'Failed to create booking.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Booking';
+  }
+}
+
+async function loadMyBookings() {
+  const date = document.getElementById('bk-date').value;
+  const status = document.getElementById('bk-status').value;
+  const container = document.getElementById('bookings-table');
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
+
+  let q = db.from('bookings')
+    .select(`id,status,service_details,total_amount,advance_amount,payment_status,created_at,
+      customers(name,phone,place),slots(date,time,segments(name))`)
+    .eq('created_by_user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+  if (date) q = q.eq('slots.date', date);
+  if (status) q = q.eq('status', status);
+
+  const { data } = await q;
+  if (!data?.length) { container.innerHTML = '<div class="loading-overlay">No bookings found.</div>'; return; }
+
+  container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+    <thead><tr style="background:var(--blue-50)">
+      ${['#','Customer','Segment','Date','Amount','Status','Payment'].map(h=>`<th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('')}
+    </tr></thead>
+    <tbody>
+    ${data.map(b=>`<tr style="border-top:1px solid var(--slate-100)">
+      <td style="padding:12px 16px;font-size:13px;font-weight:600;color:var(--blue-700)">#${b.id}</td>
+      <td style="padding:12px 16px"><div style="font-weight:600;font-size:13px">${b.customers?.name||'—'}</div><div style="font-size:11px;color:var(--slate-400)">${b.customers?.phone||''}</div></td>
+      <td style="padding:12px 16px;font-size:13px">${b.slots?.segments?.name||'—'}</td>
+      <td style="padding:12px 16px;font-size:13px">${formatDate(b.slots?.date)}</td>
+      <td style="padding:12px 16px;font-size:13px;font-weight:600">${formatCurrency(b.total_amount)}</td>
+      <td style="padding:12px 16px"><span class="badge badge-${b.status}">${b.status}</span></td>
+      <td style="padding:12px 16px"><span class="badge badge-${b.payment_status}">${b.payment_status}</span></td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function showView(view) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.target.closest('.nav-item').classList.add('active');
+  document.getElementById('view-slots').style.display = view === 'slots' ? 'block' : 'none';
+  document.getElementById('view-bookings').style.display = view === 'bookings' ? 'block' : 'none';
+  document.getElementById('page-title').textContent = view === 'slots' ? 'Slot Grid' : 'My Bookings';
+  document.getElementById('page-subtitle').textContent = view === 'slots' ? 'Click a slot to create a booking' : 'Bookings you created';
+  if (view === 'bookings') {
+    document.getElementById('bk-date').value = new Date().toISOString().split('T')[0];
+    loadMyBookings();
+  }
+}
+</script>
+</body>
+</html>
