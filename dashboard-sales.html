@@ -440,8 +440,8 @@ async function loadMyBookings() {
   container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
 
   let q = db.from('bookings')
-    .select(`id,status,service_details,total_amount,advance_amount,payment_status,created_at,
-      customers(name,phone,place),slots(date,time,segments(name))`)
+    .select(`id,status,service_details,total_amount,advance_amount,payment_status,attachment_link,created_at,
+      customers(id,name,phone,alt_phone,place,address,location_link),slots(date,time,segments(name))`)
     .eq('created_by_user_id', currentUser.id)
     .order('created_at', { ascending: false });
   if (date) q = q.eq('slots.date', date);
@@ -452,7 +452,7 @@ async function loadMyBookings() {
 
   container.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)">
     <thead><tr style="background:var(--blue-50)">
-      ${['#','Customer','Segment','Date','Amount','Status','Payment'].map(h=>`<th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('')}
+      ${['#','Customer','Segment','Date','Amount','Status','Payment','Actions'].map(h=>`<th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('')}
     </tr></thead>
     <tbody>
     ${data.map(b=>`<tr style="border-top:1px solid var(--slate-100)">
@@ -463,8 +463,71 @@ async function loadMyBookings() {
       <td style="padding:12px 16px;font-size:13px;font-weight:600">${formatCurrency(b.total_amount)}</td>
       <td style="padding:12px 16px"><span class="badge badge-${b.status}">${b.status}</span></td>
       <td style="padding:12px 16px"><span class="badge badge-${b.payment_status}">${b.payment_status}</span></td>
+      <td style="padding:12px 16px">
+        <button onclick="openSalesEditBooking(${JSON.stringify(b).replace(/"/g,'&quot;')})"
+          style="background:#eff6ff;color:#1d4ed8;border:none;cursor:pointer;padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600">
+          ✏️ Edit
+        </button>
+      </td>
     </tr>`).join('')}
     </tbody></table></div>`;
+}
+
+// ── SALES EDIT BOOKING MODAL ──────────────────────────────────
+let salesEditBookingId = null;
+let salesEditCustomerId = null;
+
+function openSalesEditBooking(b) {
+  salesEditBookingId = b.id;
+  salesEditCustomerId = b.customers?.id || b.customer_id;
+
+  document.getElementById('seb-booking-id').textContent = `#${b.id}`;
+  document.getElementById('seb-name').value    = b.customers?.name || '';
+  document.getElementById('seb-phone').value   = b.customers?.phone || '';
+  document.getElementById('seb-alt').value     = b.customers?.alt_phone || '';
+  document.getElementById('seb-place').value   = b.customers?.place || '';
+  document.getElementById('seb-address').value = b.customers?.address || '';
+  document.getElementById('seb-location').value= b.customers?.location_link || '';
+  document.getElementById('seb-details').value = b.service_details || '';
+  document.getElementById('seb-amount').value  = b.total_amount || '';
+  document.getElementById('seb-advance').value = b.advance_amount || '';
+  document.getElementById('seb-attachment').value = b.attachment_link || '';
+  document.getElementById('seb-payment').value = b.payment_status || 'pending';
+
+  openModal('modal-sales-edit');
+}
+
+async function saveSalesEditBooking() {
+  const btn = document.getElementById('seb-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const custPayload = {
+    name:          document.getElementById('seb-name').value.trim(),
+    phone:         document.getElementById('seb-phone').value.trim(),
+    alt_phone:     document.getElementById('seb-alt').value.trim() || null,
+    place:         document.getElementById('seb-place').value.trim(),
+    address:       document.getElementById('seb-address').value.trim() || null,
+    location_link: document.getElementById('seb-location').value.trim() || null,
+  };
+
+  const { error: custErr } = await db.from('customers').update(custPayload).eq('id', salesEditCustomerId);
+  if (custErr) { toast(custErr.message, 'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
+
+  const bkPayload = {
+    service_details: document.getElementById('seb-details').value.trim(),
+    total_amount:    parseFloat(document.getElementById('seb-amount').value) || 0,
+    advance_amount:  parseFloat(document.getElementById('seb-advance').value) || 0,
+    attachment_link: document.getElementById('seb-attachment').value.trim() || null,
+    payment_status:  document.getElementById('seb-payment').value,
+  };
+
+  const { error: bkErr } = await db.from('bookings').update(bkPayload).eq('id', salesEditBookingId);
+  if (bkErr) { toast(bkErr.message, 'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
+
+  toast('Booking updated!');
+  closeModal('modal-sales-edit');
+  loadMyBookings();
+  btn.disabled=false; btn.textContent='💾 Save';
 }
 
 function showView(view) {
@@ -480,5 +543,50 @@ function showView(view) {
   }
 }
 </script>
+
+<!-- Sales Edit Booking Modal -->
+<div class="modal-overlay" id="modal-sales-edit">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Booking <span id="seb-booking-id" style="color:#3b82f6;font-size:14px"></span></div>
+      <button class="modal-close" onclick="closeModal('modal-sales-edit')">&times;</button>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#1d4ed8;padding:8px 0 12px;border-bottom:2px solid #dbeafe;margin-bottom:16px">Customer Details</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group"><label class="form-label">Name</label><input class="form-input" type="text" id="seb-name"/></div>
+      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" type="tel" id="seb-phone"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group"><label class="form-label">Alt Phone</label><input class="form-input" type="tel" id="seb-alt" placeholder="Optional"/></div>
+      <div class="form-group"><label class="form-label">Place</label><input class="form-input" type="text" id="seb-place"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Address</label><input class="form-input" type="text" id="seb-address" placeholder="Full address"/></div>
+    <div class="form-group"><label class="form-label">📍 Location Link</label><input class="form-input" type="url" id="seb-location" placeholder="https://maps.google.com/…"/></div>
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#1d4ed8;padding:8px 0 12px;border-bottom:2px solid #dbeafe;margin-bottom:16px;margin-top:4px">Booking Details</div>
+    <div class="form-group"><label class="form-label">Work / Service Details</label><textarea class="form-textarea" id="seb-details" placeholder="What service is needed?"></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-input" type="number" id="seb-amount" placeholder="0"/></div>
+      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="seb-advance" placeholder="0"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Payment Status</label>
+      <select class="form-select" id="seb-payment">
+        <option value="pending">Pending</option>
+        <option value="paid">Paid</option>
+        <option value="refunded">Refunded</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">📎 Attachment Link <span style="font-size:11px;color:#94a3b8">(Drive / photo link)</span></label>
+      <input class="form-input" type="url" id="seb-attachment" placeholder="https://drive.google.com/…"/>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-sales-edit')">Cancel</button>
+      <button class="btn btn-primary" id="seb-save-btn" onclick="saveSalesEditBooking()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
