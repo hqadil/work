@@ -300,16 +300,20 @@ async function loadSlots() {
   const { data: slots } = await q;
   if (!slots || !slots.length) { container.innerHTML = '<div class="loading-overlay">No slots for this date.</div>'; return; }
 
-  // Fetch bookings for these slots
+  // Fetch ALL bookings for these slots (multiple per slot supported)
   const slotIds = slots.map(s => s.id);
   const { data: bookings } = await db.from('bookings')
     .select('id,slot_id,status,service_details,total_amount,customers(name)')
     .in('slot_id', slotIds).neq('status','cancelled');
 
+  // Group bookings by slot
   const bookingsBySlot = {};
-  (bookings || []).forEach(b => { bookingsBySlot[b.slot_id] = b; });
+  (bookings || []).forEach(b => {
+    if (!bookingsBySlot[b.slot_id]) bookingsBySlot[b.slot_id] = [];
+    bookingsBySlot[b.slot_id].push(b);
+  });
 
-  // Group by segment
+  // Group slots by segment
   const grouped = {};
   slots.forEach(s => {
     const sn = s.segments?.name || 'Other';
@@ -327,14 +331,15 @@ async function loadSlots() {
       </div>
       <div class="slots-grid">`;
     segSlots.forEach(slot => {
-      const bk = bookingsBySlot[slot.id];
+      const slotBookings = bookingsBySlot[slot.id] || [];
       const isFull = slot.booked_count >= slot.capacity;
-      const cardClass = bk ? (bk.status === 'rescheduled' ? 'rescheduled' : 'booked') : (isFull ? 'full' : 'available');
+      const openCount = slot.capacity - slot.booked_count;
+      const cardClass = isFull ? 'full' : (slotBookings.length > 0 ? 'booked' : 'available');
       html += `<div class="slot-card ${cardClass}" onclick="slotClick(${slot.id},'${segName}','${slot.date}','${slot.time}',${isFull})">
         <div class="slot-time">${formatTime(slot.time)}</div>
         <div class="slot-date">${formatDate(slot.date)}</div>
-        ${bk ? `<div class="slot-customer">${bk.customers?.name || '—'}</div><div class="slot-work">${bk.service_details || ''}</div>` : ''}
-        <div class="slot-capacity ${isFull?'slot-cap-full':''}">${isFull?'Full':slot.capacity - slot.booked_count + ' open'}</div>
+        ${slotBookings.map(bk => `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.07)"><div class="slot-customer">${bk.customers?.name || '—'}</div><div class="slot-work">${bk.service_details || ''}</div></div>`).join('')}
+        <div class="slot-capacity ${isFull?'slot-cap-full':''}" style="margin-top:8px">${isFull ? '🔴 Full' : '🟢 ' + openCount + ' open'}${slotBookings.length > 0 ? ' · ' + slotBookings.length + ' booked' : ''}</div>
       </div>`;
     });
     html += `</div></div>`;
