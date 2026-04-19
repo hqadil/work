@@ -285,11 +285,16 @@ textarea { resize:vertical;min-height:80px; }
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
   </div>
   <div class="state-title">Report Submitted!</div>
-  <div class="state-desc">Your work report has been saved successfully. The scheduling team will review it.</div>
-  <div style="margin-top:24px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px 20px;text-align:left;max-width:320px">
+  <div class="state-desc">Your work report has been saved. The scheduling team will review it.</div>
+  <div style="margin-top:20px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px 20px;text-align:left;max-width:340px;width:100%">
     <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px">SUBMITTED SUMMARY</div>
     <div id="success-summary" style="font-size:13px;color:var(--slate-600);line-height:1.8"></div>
   </div>
+  <button onclick="downloadPDF()" style="margin-top:20px;padding:14px 28px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(59,130,246,.35);font-family:inherit">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download Work Report PDF
+  </button>
+  <p style="font-size:11px;color:var(--slate-400);margin-top:10px">Opens print dialog — choose "Save as PDF"</p>
 </div>
 
 <script>
@@ -390,15 +395,18 @@ function setNow(fieldId) {
   document.getElementById(fieldId).value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 }
 
+// Stores full report data for PDF after submission
+let submittedReportData = null;
+
 async function submitReport() {
-  const status = document.getElementById('f-status').value;
-  const siteIn = document.getElementById('f-site-in').value;
+  const status  = document.getElementById('f-status').value;
+  const siteIn  = document.getElementById('f-site-in').value;
   const siteOut = document.getElementById('f-site-out').value;
-  const finalAmt = document.getElementById('f-final').value;
-  const material = document.getElementById('f-material').value;
+  const finalAmt= document.getElementById('f-final').value;
+  const material= document.getElementById('f-material').value;
   const payMode = document.getElementById('f-payment-mode').value;
-  const distance = document.getElementById('f-distance').value;
-  const execDate = document.getElementById('f-exec-date').value;
+  const distance= document.getElementById('f-distance').value;
+  const execDate= document.getElementById('f-exec-date').value;
 
   if (!status||!siteIn||!siteOut||!finalAmt||!material||!payMode||!distance||!execDate) {
     showToast('Please fill all required fields.','error'); return;
@@ -419,15 +427,185 @@ async function submitReport() {
 
   if (error) { showToast(error.message,'error'); btn.disabled=false; btn.textContent='Submit Work Report'; return; }
 
-  // Show success
+  // Capture everything for the PDF
+  const isHousekeeping = document.getElementById('housekeeping-fields').style.display !== 'none';
+  submittedReportData = {
+    bookingId,
+    submittedAt:  new Date().toLocaleString('en-IN'),
+    // Job info (from bookingData)
+    customerName:  bookingData?.customer_name  || '—',
+    customerPhone: bookingData?.customer_phone || '—',
+    customerAlt:   bookingData?.customer_alt_phone || '',
+    customerPlace: bookingData?.customer_place || '—',
+    customerAddr:  bookingData?.customer_address || '',
+    locationLink:  bookingData?.location_link || '',
+    segmentName:   bookingData?.segment_name  || '—',
+    slotDate:      formatDate(bookingData?.slot_date),
+    slotTime:      formatTime(bookingData?.slot_time),
+    serviceDetails:bookingData?.service_details || '—',
+    bookingAmount: bookingData?.total_amount || 0,
+    // Time tracking
+    execDate:      formatDate(execDate),
+    siteIn:        formatTime(siteIn),
+    workStart:     formatTime(document.getElementById('f-work-start').value),
+    siteOut:       formatTime(siteOut),
+    distance,
+    workStatus:    status,
+    // Financials
+    finalAmount:   finalAmt,
+    advancePaid:   document.getElementById('f-advance').value || 0,
+    materialCost:  material,
+    paymentMode:   payMode.replace(/_/g,' '),
+    balance:       (Number(finalAmt) - Number(document.getElementById('f-advance').value||0)).toFixed(0),
+    // Staff
+    isHousekeeping,
+    supervisor:    document.getElementById('f-supervisor')?.value || '',
+    staffCount:    document.getElementById('f-staff-count')?.value || '',
+    staffRemarks:  document.getElementById('f-staff-remarks')?.value || '',
+    techNames:     document.getElementById('f-technicians')?.value || '',
+    // Notes
+    notes:         document.getElementById('f-notes').value || '',
+    issues:        document.getElementById('f-issues').value || '',
+  };
+
   document.getElementById('success-summary').innerHTML = `
     <div>Status: <strong>${status}</strong></div>
     <div>Final Amount: <strong>₹${finalAmt}</strong></div>
-    <div>Payment: <strong>${payMode.replace('_',' ')}</strong></div>
+    <div>Payment: <strong>${payMode.replace(/_/g,' ')}</strong></div>
     <div>Distance: <strong>${distance} km</strong></div>
     <div>Site In: <strong>${formatTime(siteIn)}</strong> · Out: <strong>${formatTime(siteOut)}</strong></div>`;
   showState('success');
 }
+
+// ── PDF GENERATION ────────────────────────────────────────────
+function downloadPDF() {
+  if (!submittedReportData) { showToast('No report data available.','error'); return; }
+  const d = submittedReportData;
+
+  const row = (label, value) => value
+    ? `<tr><td style="padding:7px 12px;font-size:12px;color:#64748b;font-weight:600;width:42%;border-bottom:1px solid #f1f5f9">${label}</td>
+           <td style="padding:7px 12px;font-size:13px;color:#1e293b;font-weight:500;border-bottom:1px solid #f1f5f9">${value}</td></tr>`
+    : '';
+
+  const section = (title, color, rows) => `
+    <div style="margin-bottom:20px">
+      <div style="background:${color};border-radius:8px 8px 0 0;padding:8px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#fff">${title}</div>
+      <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;overflow:hidden">
+        ${rows}
+      </table>
+    </div>`;
+
+  // Staff section varies by segment
+  const staffRows = d.isHousekeeping
+    ? row('Supervisor', d.supervisor) +
+      row('Total Staff', d.staffCount) +
+      row('Staff Remarks', d.staffRemarks)
+    : row('Technicians', d.techNames) +
+      row('Lead / Supervisor', d.supervisor);
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>Work Report — Booking #${d.bookingId}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:#fff; color:#1e293b; padding:28px 32px; }
+  @media print {
+    body { padding:16px 20px; }
+    .no-print { display:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1d4ed8">
+  <div>
+    <div style="font-size:22px;font-weight:800;color:#1d4ed8;letter-spacing:-.5px">Handy <span style="color:#1e293b">sQuad</span></div>
+    <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-top:2px">Service Management Platform</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:16px;font-weight:800;color:#1e293b">Work Report</div>
+    <div style="font-size:12px;color:#64748b;margin-top:2px">Booking #${d.bookingId}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px">Submitted: ${d.submittedAt}</div>
+  </div>
+</div>
+
+<!-- Status banner -->
+<div style="background:${d.workStatus==='completed'?'#dcfce7':d.workStatus==='in_progress'?'#dbeafe':'#fef3c7'};
+     border:1px solid ${d.workStatus==='completed'?'#86efac':d.workStatus==='in_progress'?'#93c5fd':'#fcd34d'};
+     border-radius:10px;padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+  <span style="font-size:18px">${d.workStatus==='completed'?'✅':d.workStatus==='in_progress'?'🔄':'⏳'}</span>
+  <div>
+    <div style="font-size:13px;font-weight:800;color:#1e293b;text-transform:capitalize">${d.workStatus.replace('_',' ')}</div>
+    <div style="font-size:11px;color:#64748b">${d.segmentName} · ${d.slotDate}</div>
+  </div>
+</div>
+
+<!-- Customer -->
+${section('Customer Details','#1d4ed8',
+  row('Name',         d.customerName) +
+  row('Phone',        d.customerPhone) +
+  row('Alt Phone',    d.customerAlt) +
+  row('Place',        d.customerPlace) +
+  row('Address',      d.customerAddr) +
+  row('Location',     d.locationLink ? '<a href="'+d.locationLink+'">View on Map</a>' : '')
+)}
+
+<!-- Job Info -->
+${section('Job Information','#0369a1',
+  row('Segment',      d.segmentName) +
+  row('Scheduled Date',d.slotDate) +
+  row('Scheduled Time',d.slotTime) +
+  row('Work Details', d.serviceDetails)
+)}
+
+<!-- Time Tracking -->
+${section('Time Tracking','#0f766e',
+  row('Execution Date', d.execDate) +
+  row('Site In',        d.siteIn) +
+  row('Work Started',   d.workStart) +
+  row('Site Out',       d.siteOut) +
+  row('Distance',       d.distance ? d.distance+' km' : '')
+)}
+
+<!-- Staff / Technicians -->
+${section(d.isHousekeeping ? 'Staff (Housekeeping)' : 'Technicians','#7c3aed', staffRows)}
+
+<!-- Financials -->
+${section('Financials','#b45309',
+  row('Booking Amount',  '₹'+Number(d.bookingAmount).toLocaleString('en-IN')) +
+  row('Advance Paid',    '₹'+Number(d.advancePaid).toLocaleString('en-IN')) +
+  row('Final Amount',    '<strong style="font-size:15px;color:#16a34a">₹'+Number(d.finalAmount).toLocaleString('en-IN')+'</strong>') +
+  row('Balance',         '₹'+Number(d.balance).toLocaleString('en-IN')) +
+  row('Material Cost',   '₹'+Number(d.materialCost).toLocaleString('en-IN')) +
+  row('Payment Mode',    d.paymentMode)
+)}
+
+<!-- Notes & Issues -->
+${(d.notes||d.issues) ? section('Notes & Issues','#475569',
+  row('Technician Notes', d.notes ? d.notes.replace(/\n/g,'<br>') : '') +
+  row('Issues Logged',    d.issues ? '<span style="color:#dc2626">'+d.issues.replace(/\n/g,'<br>')+'</span>' : '')
+) : ''}
+
+<!-- Footer -->
+<div style="margin-top:24px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+  <div style="font-size:11px;color:#94a3b8">Generated by Handy sQuad · ${d.submittedAt}</div>
+  <div style="font-size:11px;color:#94a3b8">Booking #${d.bookingId} · ${d.segmentName}</div>
+</div>
+
+<script>
+  window.onload = function() { window.print(); }
+</script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
 
 async function saveDraft() {
   const btn = document.getElementById('draft-btn');
