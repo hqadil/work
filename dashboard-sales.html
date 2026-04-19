@@ -162,7 +162,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
       <!-- Slot Grid View -->
       <div id="view-slots">
         <div class="filter-bar">
-          <input type="date" id="filter-date" onchange="loadSlots()"/>
+          <input type="date" id="filter-date" onchange="loadSlots();loadStats()"/>
           <select id="filter-segment" onchange="loadSlots()">
             <option value="">All Segments</option>
           </select>
@@ -273,17 +273,18 @@ async function loadSegments() {
 }
 
 async function loadStats() {
-  const today = new Date().toISOString().split('T')[0];
-  const { data: slots } = await db.from('slots').select('id,capacity,booked_count').eq('date', today);
+  const date = document.getElementById('filter-date')?.value || new Date().toISOString().split('T')[0];
+  const { data: slots } = await db.from('slots').select('id,capacity,booked_count').eq('date', date);
   if (!slots) return;
   const total = slots.reduce((a,s) => a + s.capacity, 0);
   const booked = slots.reduce((a,s) => a + s.booked_count, 0);
   document.getElementById('stat-total').textContent = total;
-  document.getElementById('stat-available').textContent = total - booked;
+  document.getElementById('stat-available').textContent = Math.max(0, total - booked);
   document.getElementById('stat-booked').textContent = booked;
 
-  const { data: bks } = await db.from('bookings').select('total_amount,slot_id,slots!inner(date)')
-    .eq('slots.date', today).neq('status','cancelled');
+  const { data: bks } = await db.from('bookings')
+    .select('total_amount,slot_id,slots!inner(date)')
+    .eq('slots.date', date).neq('status','cancelled');
   const rev = (bks || []).reduce((a,b) => a + Number(b.total_amount), 0);
   document.getElementById('stat-revenue').textContent = formatCurrency(rev);
 }
@@ -332,14 +333,15 @@ async function loadSlots() {
       <div class="slots-grid">`;
     segSlots.forEach(slot => {
       const slotBookings = bookingsBySlot[slot.id] || [];
-      const isFull = slot.booked_count >= slot.capacity;
-      const openCount = slot.capacity - slot.booked_count;
+      const realBooked = slot.booked_count;
+      const isFull = realBooked >= slot.capacity;
+      const openCount = Math.max(0, slot.capacity - realBooked);
       const cardClass = isFull ? 'full' : (slotBookings.length > 0 ? 'booked' : 'available');
       html += `<div class="slot-card ${cardClass}" onclick="slotClick(${slot.id},'${segName}','${slot.date}','${slot.time}',${isFull})">
         <div class="slot-time">${formatTime(slot.time)}</div>
         <div class="slot-date">${formatDate(slot.date)}</div>
         ${slotBookings.map(bk => `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.07)"><div class="slot-customer">${bk.customers?.name || '—'}</div><div class="slot-work">${bk.service_details || ''}</div></div>`).join('')}
-        <div class="slot-capacity ${isFull?'slot-cap-full':''}" style="margin-top:8px">${isFull ? '🔴 Full' : '🟢 ' + openCount + ' open'}${slotBookings.length > 0 ? ' · ' + slotBookings.length + ' booked' : ''}</div>
+        <div class="slot-capacity ${isFull?'slot-cap-full':''}" style="margin-top:8px">${isFull ? '🔴 Full ('+realBooked+'/'+slot.capacity+')' : '🟢 '+openCount+' of '+slot.capacity+' open'}${slotBookings.length > 0 ? ' · '+slotBookings.length+' booking(s)' : ''}</div>
       </div>`;
     });
     html += `</div></div>`;
@@ -347,8 +349,14 @@ async function loadSlots() {
   container.innerHTML = html;
 }
 
-function slotClick(slotId, segName, date, time, isFull) {
+async function slotClick(slotId, segName, date, time, isFull) {
   if (isFull) { toast('This slot is full.', 'warning'); return; }
+  // Re-check in real time
+  const { data: fresh } = await db.from('slots').select('booked_count,capacity').eq('id', slotId).single();
+  if (fresh && fresh.booked_count >= fresh.capacity) {
+    toast('This slot just filled up. Please refresh and pick another.', 'error');
+    await loadSlots(); await loadStats(); return;
+  }
   selectedSlotId = slotId;
   selectedCustomerId = null;
   // Reset form
@@ -422,6 +430,18 @@ async function createBooking() {
       status: 'booked'
     });
     if (be) throw be;
+
+    // Increment booked_count on the slot — re-fetch first to get current value
+    const { data: freshSlot } = await db.from('slots').select('booked_count,capacity').eq('id', selectedSlotId).single();
+    if (freshSlot) {
+      if (freshSlot.booked_count >= freshSlot.capacity) {
+        // Rollback: delete the booking we just created
+        await db.from('bookings').delete().eq('customer_id', custId).eq('slot_id', selectedSlotId).order('created_at',{ascending:false}).limit(1);
+        throw new Error('Slot just filled up — please pick another slot.');
+      }
+      await db.from('slots').update({ booked_count: freshSlot.booked_count + 1 }).eq('id', selectedSlotId);
+    }
+
     toast('Booking created successfully!');
     closeModal('modal-booking');
     await loadSlots();
@@ -441,7 +461,8 @@ async function loadMyBookings() {
 
   let q = db.from('bookings')
     .select(`id,status,service_details,total_amount,advance_amount,payment_status,attachment_link,created_at,
-      customers(id,name,phone,alt_phone,place,address,location_link),slots(date,time,segments(name))`)
+      customers(id,name,phone,alt_phone,place,address,location_link),
+      slots(date,time,segments(name))`)
     .eq('created_by_user_id', currentUser.id)
     .order('created_at', { ascending: false });
   if (date) q = q.eq('slots.date', date);
@@ -455,74 +476,69 @@ async function loadMyBookings() {
       ${['#','Customer','Segment','Date','Amount','Status','Payment','Actions'].map(h=>`<th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('')}
     </tr></thead>
     <tbody>
-    ${data.map(b=>`<tr style="border-top:1px solid var(--slate-100)">
-      <td style="padding:12px 16px;font-size:13px;font-weight:600;color:var(--blue-700)">#${b.id}</td>
-      <td style="padding:12px 16px"><div style="font-weight:600;font-size:13px">${b.customers?.name||'—'}</div><div style="font-size:11px;color:var(--slate-400)">${b.customers?.phone||''}</div></td>
-      <td style="padding:12px 16px;font-size:13px">${b.slots?.segments?.name||'—'}</td>
-      <td style="padding:12px 16px;font-size:13px">${formatDate(b.slots?.date)}</td>
-      <td style="padding:12px 16px;font-size:13px;font-weight:600">${formatCurrency(b.total_amount)}</td>
-      <td style="padding:12px 16px"><span class="badge badge-${b.status}">${b.status}</span></td>
-      <td style="padding:12px 16px"><span class="badge badge-${b.payment_status}">${b.payment_status}</span></td>
-      <td style="padding:12px 16px">
-        <button onclick="openSalesEditBooking(${JSON.stringify(b).replace(/"/g,'&quot;')})"
-          style="background:#eff6ff;color:#1d4ed8;border:none;cursor:pointer;padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600">
-          ✏️ Edit
-        </button>
-      </td>
-    </tr>`).join('')}
+    ${data.map(b=>{
+      // Security: only allow edit if status is still 'booked' (not changed by scheduling)
+      const canEdit = b.status === 'booked';
+      const editBtn = canEdit
+        ? `<button onclick="openSalesEditBooking(${JSON.stringify(b).replace(/"/g,'&quot;')})" style="background:#eff6ff;color:#1d4ed8;border:none;cursor:pointer;padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600">✏️ Edit</button>`
+        : `<span style="font-size:11px;color:#94a3b8;font-style:italic">Locked by team</span>`;
+      return `<tr style="border-top:1px solid var(--slate-100)">
+        <td style="padding:12px 16px;font-size:13px;font-weight:600;color:var(--blue-700)">#${b.id}</td>
+        <td style="padding:12px 16px"><div style="font-weight:600;font-size:13px">${b.customers?.name||'—'}</div><div style="font-size:11px;color:var(--slate-400)">${b.customers?.phone||''}</div></td>
+        <td style="padding:12px 16px;font-size:13px">${b.slots?.segments?.name||'—'}</td>
+        <td style="padding:12px 16px;font-size:13px">${formatDate(b.slots?.date)}</td>
+        <td style="padding:12px 16px;font-size:13px;font-weight:600">${formatCurrency(b.total_amount)}</td>
+        <td style="padding:12px 16px"><span class="badge badge-${b.status}">${b.status}</span></td>
+        <td style="padding:12px 16px"><span class="badge badge-${b.payment_status}">${b.payment_status}</span></td>
+        <td style="padding:12px 16px">${editBtn}</td>
+      </tr>`;
+    }).join('')}
     </tbody></table></div>`;
 }
 
-// ── SALES EDIT BOOKING MODAL ──────────────────────────────────
+// ── SALES EDIT BOOKING ────────────────────────────────────────
 let salesEditBookingId = null;
 let salesEditCustomerId = null;
 
 function openSalesEditBooking(b) {
   salesEditBookingId = b.id;
   salesEditCustomerId = b.customers?.id || b.customer_id;
-
   document.getElementById('seb-booking-id').textContent = `#${b.id}`;
-  document.getElementById('seb-name').value    = b.customers?.name || '';
-  document.getElementById('seb-phone').value   = b.customers?.phone || '';
-  document.getElementById('seb-alt').value     = b.customers?.alt_phone || '';
-  document.getElementById('seb-place').value   = b.customers?.place || '';
-  document.getElementById('seb-address').value = b.customers?.address || '';
-  document.getElementById('seb-location').value= b.customers?.location_link || '';
-  document.getElementById('seb-details').value = b.service_details || '';
-  document.getElementById('seb-amount').value  = b.total_amount || '';
-  document.getElementById('seb-advance').value = b.advance_amount || '';
+  document.getElementById('seb-name').value     = b.customers?.name || '';
+  document.getElementById('seb-phone').value    = b.customers?.phone || '';
+  document.getElementById('seb-alt').value      = b.customers?.alt_phone || '';
+  document.getElementById('seb-place').value    = b.customers?.place || '';
+  document.getElementById('seb-address').value  = b.customers?.address || '';
+  document.getElementById('seb-location').value = b.customers?.location_link || '';
+  document.getElementById('seb-details').value  = b.service_details || '';
+  document.getElementById('seb-amount').value   = b.total_amount || '';
+  document.getElementById('seb-advance').value  = b.advance_amount || '';
   document.getElementById('seb-attachment').value = b.attachment_link || '';
-  document.getElementById('seb-payment').value = b.payment_status || 'pending';
-
+  document.getElementById('seb-payment').value  = b.payment_status || 'pending';
   openModal('modal-sales-edit');
 }
 
 async function saveSalesEditBooking() {
   const btn = document.getElementById('seb-save-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
-
-  const custPayload = {
+  const { error: ce } = await db.from('customers').update({
     name:          document.getElementById('seb-name').value.trim(),
     phone:         document.getElementById('seb-phone').value.trim(),
     alt_phone:     document.getElementById('seb-alt').value.trim() || null,
     place:         document.getElementById('seb-place').value.trim(),
     address:       document.getElementById('seb-address').value.trim() || null,
     location_link: document.getElementById('seb-location').value.trim() || null,
-  };
+  }).eq('id', salesEditCustomerId);
+  if (ce) { toast(ce.message,'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
 
-  const { error: custErr } = await db.from('customers').update(custPayload).eq('id', salesEditCustomerId);
-  if (custErr) { toast(custErr.message, 'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
-
-  const bkPayload = {
+  const { error: be } = await db.from('bookings').update({
     service_details: document.getElementById('seb-details').value.trim(),
-    total_amount:    parseFloat(document.getElementById('seb-amount').value) || 0,
-    advance_amount:  parseFloat(document.getElementById('seb-advance').value) || 0,
-    attachment_link: document.getElementById('seb-attachment').value.trim() || null,
+    total_amount:    parseFloat(document.getElementById('seb-amount').value)||0,
+    advance_amount:  parseFloat(document.getElementById('seb-advance').value)||0,
+    attachment_link: document.getElementById('seb-attachment').value.trim()||null,
     payment_status:  document.getElementById('seb-payment').value,
-  };
-
-  const { error: bkErr } = await db.from('bookings').update(bkPayload).eq('id', salesEditBookingId);
-  if (bkErr) { toast(bkErr.message, 'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
+  }).eq('id', salesEditBookingId);
+  if (be) { toast(be.message,'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
 
   toast('Booking updated!');
   closeModal('modal-sales-edit');
@@ -546,41 +562,36 @@ function showView(view) {
 
 <!-- Sales Edit Booking Modal -->
 <div class="modal-overlay" id="modal-sales-edit">
-  <div class="modal-box" style="max-width:600px">
+  <div class="modal-box wide">
     <div class="modal-header">
       <div class="modal-title">✏️ Edit Booking <span id="seb-booking-id" style="color:#3b82f6;font-size:14px"></span></div>
       <button class="modal-close" onclick="closeModal('modal-sales-edit')">&times;</button>
     </div>
-
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#1d4ed8;padding:8px 0 12px;border-bottom:2px solid #dbeafe;margin-bottom:16px">Customer Details</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="section-divider">Customer Details</div>
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Name</label><input class="form-input" type="text" id="seb-name"/></div>
       <div class="form-group"><label class="form-label">Phone</label><input class="form-input" type="tel" id="seb-phone"/></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Alt Phone</label><input class="form-input" type="tel" id="seb-alt" placeholder="Optional"/></div>
       <div class="form-group"><label class="form-label">Place</label><input class="form-input" type="text" id="seb-place"/></div>
     </div>
-    <div class="form-group"><label class="form-label">Address</label><input class="form-input" type="text" id="seb-address" placeholder="Full address"/></div>
+    <div class="form-group"><label class="form-label">Address</label><input class="form-input" type="text" id="seb-address"/></div>
     <div class="form-group"><label class="form-label">📍 Location Link</label><input class="form-input" type="url" id="seb-location" placeholder="https://maps.google.com/…"/></div>
-
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#1d4ed8;padding:8px 0 12px;border-bottom:2px solid #dbeafe;margin-bottom:16px;margin-top:4px">Booking Details</div>
-    <div class="form-group"><label class="form-label">Work / Service Details</label><textarea class="form-textarea" id="seb-details" placeholder="What service is needed?"></textarea></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-input" type="number" id="seb-amount" placeholder="0"/></div>
-      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="seb-advance" placeholder="0"/></div>
+    <div class="section-divider">Service Details</div>
+    <div class="form-group"><label class="form-label">Work / Service Details</label><textarea class="form-textarea" id="seb-details"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-input" type="number" id="seb-amount"/></div>
+      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="seb-advance"/></div>
     </div>
-    <div class="form-group"><label class="form-label">Payment Status</label>
-      <select class="form-select" id="seb-payment">
-        <option value="pending">Pending</option>
-        <option value="paid">Paid</option>
-        <option value="refunded">Refunded</option>
-      </select>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Payment Status</label>
+        <select class="form-select" id="seb-payment">
+          <option value="pending">Pending</option><option value="paid">Paid</option><option value="refunded">Refunded</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">📎 Attachment Link</label><input class="form-input" type="url" id="seb-attachment" placeholder="Drive / photo link"/></div>
     </div>
-    <div class="form-group"><label class="form-label">📎 Attachment Link <span style="font-size:11px;color:#94a3b8">(Drive / photo link)</span></label>
-      <input class="form-input" type="url" id="seb-attachment" placeholder="https://drive.google.com/…"/>
-    </div>
-
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
       <button class="btn btn-secondary" onclick="closeModal('modal-sales-edit')">Cancel</button>
       <button class="btn btn-primary" id="seb-save-btn" onclick="saveSalesEditBooking()">💾 Save</button>
