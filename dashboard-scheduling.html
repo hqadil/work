@@ -154,6 +154,8 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
             <option value="">All Status</option>
             <option>pending</option><option>in_progress</option><option>completed</option>
           </select>
+          <button class="btn btn-primary btn-sm" onclick="loadReports()">🔄 Refresh</button>
+          <button class="btn btn-secondary btn-sm" onclick="downloadDailyCSV()">⬇ Daily CSV</button>
         </div>
         <div id="reports-table"></div>
       </div>
@@ -208,124 +210,6 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
       <button class="btn btn-secondary" onclick="closeModal('modal-reschedule')">Cancel</button>
       <button class="btn btn-primary" onclick="doReschedule()">Confirm Reschedule</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit Work Report Modal -->
-<div class="modal-overlay" id="modal-edit-report">
-  <div class="modal-box" style="max-width:640px">
-    <div class="modal-header">
-      <div class="modal-title">✏️ Edit Work Report <span id="er-report-id" style="color:var(--blue-500);font-size:14px"></span></div>
-      <button class="modal-close" onclick="closeModal('modal-edit-report')">&times;</button>
-    </div>
-    <div class="section-divider">Job Info (Read-only)</div>
-    <div class="form-row" style="margin-bottom:16px">
-      <div><span style="font-size:12px;color:var(--slate-400);font-weight:600">CUSTOMER</span><div id="er-customer" style="font-weight:700;font-size:14px;margin-top:3px">—</div></div>
-      <div><span style="font-size:12px;color:var(--slate-400);font-weight:600">SEGMENT</span><div id="er-segment" style="font-weight:700;font-size:14px;margin-top:3px">—</div></div>
-    </div>
-    <div class="section-divider">Time Tracking</div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Execution Date</label><input class="form-input" type="date" id="er-exec-date"/></div>
-      <div class="form-group"><label class="form-label">Work Status</label>
-        <select class="form-select" id="er-status">
-          <option value="pending">⏳ Pending</option>
-          <option value="in_progress">🔄 In Progress</option>
-          <option value="completed">✅ Completed</option>
-          <option value="rescheduled">📅 Rescheduled</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Site In</label><input class="form-input" type="time" id="er-site-in"/></div>
-      <div class="form-group"><label class="form-label">Work Started</label><input class="form-input" type="time" id="er-work-start"/></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Site Out</label><input class="form-input" type="time" id="er-site-out"/></div>
-      <div class="form-group"><label class="form-label">Distance (km)</label><input class="form-input" type="number" id="er-distance" placeholder="0"/></div>
-    </div>
-    <div class="section-divider">Personnel</div>
-    <div class="form-group"><label class="form-label">Technician Names <span style="font-size:11px;color:var(--slate-400)">(comma separated)</span></label>
-      <input class="form-input" type="text" id="er-technicians" placeholder="e.g. Raju, Suresh, Anil"/>
-    </div>
-    <div class="form-group"><label class="form-label">Supervisor <span style="font-size:11px;color:var(--slate-400)">(Housekeeping only)</span></label>
-      <input class="form-input" type="text" id="er-supervisor" placeholder="Supervisor name"/>
-    </div>
-    <div class="section-divider">Financials</div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Final Amount (₹)</label><input class="form-input" type="number" id="er-final" placeholder="0"/></div>
-      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="er-advance" placeholder="0"/></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Material Cost (₹)</label><input class="form-input" type="number" id="er-material" placeholder="0"/></div>
-      <div class="form-group"><label class="form-label">Payment Mode</label>
-        <select class="form-select" id="er-payment-mode">
-          <option value="">Select mode</option>
-          <option value="cash">💵 Cash</option>
-          <option value="upi">📱 UPI</option>
-          <option value="card">💳 Card</option>
-          <option value="online_transfer">🏦 Online Transfer</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-    </div>
-    <div class="section-divider">Notes & Issues</div>
-    <div class="form-group"><label class="form-label">Technician Notes</label><textarea class="form-textarea" id="er-notes" placeholder="Any notes…"></textarea></div>
-    <div class="form-group"><label class="form-label">Issues Logged</label><textarea class="form-textarea" id="er-issues" placeholder="Any issues or failures…"></textarea></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-      <button class="btn btn-secondary" onclick="closeModal('modal-edit-report')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditReport()" id="save-report-btn">💾 Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit Booking Modal -->
-<div class="modal-overlay" id="modal-edit-booking">
-  <div class="modal-box" style="max-width:600px">
-    <div class="modal-header">
-      <div class="modal-title">✏️ Edit Booking <span id="eb-booking-id" style="color:var(--blue-500);font-size:14px"></span></div>
-      <button class="modal-close" onclick="closeModal('modal-edit-booking')">&times;</button>
-    </div>
-    <div class="section-divider">Customer Details</div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Customer Name</label><input class="form-input" type="text" id="eb-name" placeholder="Customer name"/></div>
-      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" type="tel" id="eb-phone" placeholder="Phone number"/></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Alt Phone</label><input class="form-input" type="tel" id="eb-alt-phone" placeholder="Alternate phone"/></div>
-      <div class="form-group"><label class="form-label">Place</label><input class="form-input" type="text" id="eb-place" placeholder="Place"/></div>
-    </div>
-    <div class="form-group"><label class="form-label">Address</label><input class="form-input" type="text" id="eb-address" placeholder="Full address"/></div>
-    <div class="form-group"><label class="form-label">📍 Location Link</label><input class="form-input" type="url" id="eb-location" placeholder="https://maps.google.com/..."/></div>
-    <div class="section-divider">Booking Details</div>
-    <div class="form-group"><label class="form-label">Work / Service Details</label><textarea class="form-textarea" id="eb-service-details" placeholder="Details of work requested…"></textarea></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-input" type="number" id="eb-amount" placeholder="0"/></div>
-      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="eb-advance" placeholder="0"/></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Payment Status</label>
-        <select class="form-select" id="eb-payment-status">
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="refunded">Refunded</option>
-        </select>
-      </div>
-      <div class="form-group"><label class="form-label">Booking Status</label>
-        <select class="form-select" id="eb-status">
-          <option value="booked">Booked</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="rescheduled">Rescheduled</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group"><label class="form-label">📎 Attachment Link <span style="font-size:11px;color:var(--slate-400)">(Drive/photo link)</span></label>
-      <input class="form-input" type="url" id="eb-attachment" placeholder="https://drive.google.com/..."/>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-      <button class="btn btn-secondary" onclick="closeModal('modal-edit-booking')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditBooking()" id="save-booking-btn">💾 Save Changes</button>
     </div>
   </div>
 </div>
@@ -554,6 +438,9 @@ async function doReschedule() {
 }
 
 // ── WORK REPORTS ──────────────────────────────────────────────
+// ── WORK REPORTS ──────────────────────────────────────────────
+let reportData = [];
+
 async function loadReports() {
   const date = document.getElementById('rep-date').value;
   const status = document.getElementById('rep-status').value;
@@ -561,114 +448,271 @@ async function loadReports() {
   container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
 
   let q = db.from('work_reports').select(`
-    id,work_status,final_amount,payment_mode,executed_date,submitted_at,
-    bookings(id,service_details,customers(name,phone),slots(date,segments(name)))
-  `).order('created_at', { ascending: false }).limit(100);
+    id,work_status,final_amount,advance,material_cost,payment_mode,
+    site_in,work_started_time,site_out,distance,executed_date,submitted_at,
+    notes,issues_logged,supervisor,
+    bookings(id,service_details,total_amount,advance_amount,
+      customers(name,phone,place,address,location_link),
+      slots(date,time,segments(name))),
+    report_technicians(id,role_on_job,users(id,name))
+  `).order('executed_date', { ascending: false }).limit(200);
   if (status) q = q.eq('work_status', status);
   if (date) q = q.eq('executed_date', date);
   const { data } = await q;
-  if (!data?.length) { container.innerHTML = '<div class="loading-overlay">No reports found.</div>'; return; }
+  reportData = data || [];
+  if (!reportData.length) { container.innerHTML = '<div class="loading-overlay">No reports found for this date/filter.</div>'; return; }
 
-  container.innerHTML = `<div class="data-table-wrap"><table class="data-table">
-    <thead><tr>${['Report #','Booking #','Customer','Segment','Date','Amount','Status','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+  container.innerHTML = `<div class="data-table-wrap" style="overflow-x:auto"><table class="data-table">
+    <thead><tr>${['Report#','Booking#','Customer','Segment','Date','Site In','Site Out','Technicians','Final Amt','Status','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>
-    ${data.map(r=>`<tr>
-      <td style="font-weight:700;color:var(--blue-700)">#${r.id}</td>
-      <td>#${r.bookings?.id||'—'}</td>
-      <td>${r.bookings?.customers?.name||'—'}</td>
-      <td>${r.bookings?.slots?.segments?.name||'—'}</td>
-      <td>${formatDate(r.executed_date||r.bookings?.slots?.date)}</td>
-      <td style="font-weight:600">${formatCurrency(r.final_amount)}</td>
-      <td><span class="badge badge-${r.work_status||'pending'}">${r.work_status||'pending'}</span></td>
-      <td><button class="row-btn view" onclick="openEditReport(${r.id})">✏️ Edit</button></td>
-    </tr>`).join('')}
+    ${reportData.map(r=>{
+      const techs = buildTechDisplay(r);
+      return `<tr>
+        <td style="font-weight:700;color:var(--blue-700)">#${r.id}</td>
+        <td>#${r.bookings?.id||'—'}</td>
+        <td><div style="font-weight:600">${r.bookings?.customers?.name||'—'}</div><div style="font-size:11px;color:var(--slate-400)">${r.bookings?.customers?.phone||''}</div></td>
+        <td>${r.bookings?.slots?.segments?.name||'—'}</td>
+        <td>${formatDate(r.executed_date||r.bookings?.slots?.date)}</td>
+        <td>${r.site_in ? formatTime(r.site_in) : '—'}</td>
+        <td>${r.site_out ? formatTime(r.site_out) : '—'}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${techs}">${techs||'—'}</td>
+        <td style="font-weight:600">${formatCurrency(r.final_amount)}</td>
+        <td><span class="badge badge-${r.work_status||'pending'}">${r.work_status||'pending'}</span></td>
+        <td><button class="row-btn view" onclick="openEditReport(${r.id})">✏️ Edit</button></td>
+      </tr>`;
+    }).join('')}
     </tbody></table></div>`;
 }
 
-async function editReportStatus(reportId, curStatus) {
-  const newStatus = prompt(`Current: ${curStatus}\nNew status (pending/in_progress/completed/rescheduled):`, curStatus);
-  if (!newStatus) return;
-  const { error } = await db.from('work_reports').update({ work_status: newStatus }).eq('id', reportId);
-  if (error) { toast(error.message,'error'); return; }
-  toast('Status updated!'); loadReports();
+function buildTechDisplay(r) {
+  // Linked technicians from report_technicians table (real users)
+  const linked = (r.report_technicians||[]).map(t=>t.users?.name||'').filter(Boolean);
+  if (linked.length) return linked.join(', ');
+  // Fallback: unregistered staff names stored as "[STAFF: name1, name2]" prefix in notes
+  const m = (r.notes||'').match(/^\[STAFF:\s*([^\]]+)\]/);
+  if (m) return m[1].trim();
+  return '';
 }
 
-// ── EDIT WORK REPORT ──────────────────────────────────────────
+// ── DAILY CSV DOWNLOAD ────────────────────────────────────────
+async function downloadDailyCSV() {
+  const date = document.getElementById('rep-date').value;
+  if (!date) { toast('Please select a date first.','warning'); return; }
+
+  toast('Preparing CSV…','warning');
+
+  // Fresh full fetch for that date — include all fields
+  const { data } = await db.from('work_reports').select(`
+    id,work_status,final_amount,advance,material_cost,payment_mode,
+    site_in,work_started_time,site_out,distance,executed_date,submitted_at,
+    notes,issues_logged,supervisor,
+    bookings(id,service_details,total_amount,advance_amount,
+      customers(name,phone,alt_phone,place,address,location_link),
+      slots(date,time,segments(name))),
+    report_technicians(role_on_job,users(name))
+  `).eq('executed_date', date).order('id');
+
+  const rows = data || [];
+  if (!rows.length) { toast('No work reports found for ' + date, 'error'); return; }
+
+  const headers = [
+    'Report ID','Booking ID','Customer Name','Phone','Alt Phone','Place','Address','Location Link',
+    'Segment','Slot Date','Slot Time','Execution Date',
+    'Site In','Work Started','Site Out','Distance (km)',
+    'Technicians','Supervisor',
+    'Booking Amount','Final Amount','Advance','Material Cost','Balance','Payment Mode',
+    'Work Status','Technician Notes','Issues Logged','Submitted At'
+  ];
+
+  const csvRows = rows.map(r => {
+    const techs = buildTechDisplay(r);
+    const bookingAmt = r.bookings?.total_amount || 0;
+    const adv = r.advance || r.bookings?.advance_amount || 0;
+    const balance = (Number(bookingAmt) - Number(adv)).toFixed(0);
+    return [
+      r.id,
+      r.bookings?.id||'',
+      r.bookings?.customers?.name||'',
+      r.bookings?.customers?.phone||'',
+      r.bookings?.customers?.alt_phone||'',
+      r.bookings?.customers?.place||'',
+      r.bookings?.customers?.address||'',
+      r.bookings?.customers?.location_link||'',
+      r.bookings?.slots?.segments?.name||'',
+      r.bookings?.slots?.date||'',
+      r.bookings?.slots?.time||'',
+      r.executed_date||'',
+      r.site_in||'',
+      r.work_started_time||'',
+      r.site_out||'',
+      r.distance||0,
+      techs,
+      r.supervisor||'',
+      bookingAmt,
+      r.final_amount||0,
+      adv,
+      r.material_cost||0,
+      balance,
+      r.payment_mode||'',
+      r.work_status||'',
+      (r.notes||'').replace(/\n/g,' '),
+      (r.issues_logged||'').replace(/\n/g,' '),
+      r.submitted_at||''
+    ];
+  });
+
+  const csv = [headers, ...csvRows].map(row => row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download = `handysquad_daily_${date}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`CSV downloaded — ${rows.length} report(s) for ${date}`);
+}
+
+// ── EDIT WORK REPORT MODAL ────────────────────────────────────
 let editReportId = null;
-let editReportBookingId = null;
+let editReportTechnicianIds = []; // tracked linked technicians
 
 async function openEditReport(reportId) {
   editReportId = reportId;
   document.getElementById('er-report-id').textContent = `#${reportId}`;
-  document.getElementById('save-report-btn').textContent = '💾 Save Changes';
   document.getElementById('save-report-btn').disabled = false;
+  document.getElementById('save-report-btn').textContent = '💾 Save Changes';
 
   const { data: r } = await db.from('work_reports').select(`
     *,
-    bookings(id,service_details,advance_amount,customers(name),slots(segments(name))),
-    report_technicians(users(name))
+    bookings(id,service_details,advance_amount,customers(name),slots(segments(name,id))),
+    report_technicians(id,technician_user_id,role_on_job,users(name))
   `).eq('id', reportId).single();
 
-  if (!r) { toast('Report not found', 'error'); return; }
-  editReportBookingId = r.booking_id;
+  if (!r) { toast('Report not found','error'); return; }
 
-  document.getElementById('er-customer').textContent = r.bookings?.customers?.name || '—';
-  document.getElementById('er-segment').textContent = r.bookings?.slots?.segments?.name || '—';
-  document.getElementById('er-exec-date').value = r.executed_date || '';
-  document.getElementById('er-status').value = r.work_status || 'pending';
-  document.getElementById('er-site-in').value = r.site_in || '';
-  document.getElementById('er-work-start').value = r.work_started_time || '';
-  document.getElementById('er-site-out').value = r.site_out || '';
-  document.getElementById('er-distance').value = r.distance || '';
-  document.getElementById('er-final').value = r.final_amount || '';
-  document.getElementById('er-advance').value = r.advance || r.bookings?.advance_amount || '';
-  document.getElementById('er-material').value = r.material_cost || '';
-  document.getElementById('er-payment-mode').value = r.payment_mode || '';
-  document.getElementById('er-notes').value = r.notes || '';
+  const segName = r.bookings?.slots?.segments?.name || '';
+  const isHousekeeping = segName.toLowerCase().includes('housekeeping');
+
+  document.getElementById('er-customer').textContent   = r.bookings?.customers?.name || '—';
+  document.getElementById('er-segment').textContent    = segName;
+  document.getElementById('er-exec-date').value        = r.executed_date || '';
+  document.getElementById('er-status').value           = r.work_status || 'pending';
+  document.getElementById('er-site-in').value          = r.site_in || '';
+  document.getElementById('er-work-start').value       = r.work_started_time || '';
+  document.getElementById('er-site-out').value         = r.site_out || '';
+  document.getElementById('er-distance').value         = r.distance || '';
+  document.getElementById('er-final').value            = r.final_amount || '';
+  document.getElementById('er-advance').value          = r.advance || r.bookings?.advance_amount || '';
+  document.getElementById('er-material').value         = r.material_cost || '';
+  document.getElementById('er-payment-mode').value     = r.payment_mode || '';
+  document.getElementById('er-supervisor').value       = r.supervisor || '';
+
+  // Strip [STAFF:...] prefix from notes for the unregistered names field
+  const staffMatch = (r.notes||'').match(/^\[STAFF:\s*([^\]]+)\]\n?/);
+  document.getElementById('er-tech-names').value = staffMatch ? staffMatch[1].trim() : '';
+  // Notes without the STAFF prefix
+  document.getElementById('er-notes').value = staffMatch ? r.notes.replace(/^\[STAFF:[^\]]+\]\n?/,'') : (r.notes||'');
   document.getElementById('er-issues').value = r.issues_logged || '';
-  document.getElementById('er-supervisor').value = r.supervisor || '';
-  // Load technicians
-  const techNames = (r.report_technicians||[]).map(t=>t.users?.name||'').filter(Boolean).join(', ');
-  document.getElementById('er-technicians').value = techNames;
+
+  // Toggle supervisor/tech label
+  document.getElementById('er-supervisor-row').style.display = isHousekeeping ? 'block' : 'none';
+  document.getElementById('er-tech-label').textContent = isHousekeeping
+    ? 'Staff Names (count only — for housekeeping)'
+    : 'Technician Names (each analysed individually)';
+
+  // Populate linked technician rows (real users in report_technicians)
+  const linked = r.report_technicians || [];
+  editReportTechnicianIds = linked.map(t=>({ id: t.id, userId: t.technician_user_id, name: t.users?.name||'', role: t.role_on_job||'technician' }));
+  renderTechnicianEntries(isHousekeeping);
 
   openModal('modal-edit-report');
 }
 
+function renderTechnicianEntries(isHousekeeping) {
+  const container = document.getElementById('er-tech-entries');
+  container.innerHTML = editReportTechnicianIds.map((t,i) => `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <input class="form-input" style="flex:1" value="${t.name}" placeholder="Search by name (must be a registered technician)"
+        oninput="editReportTechnicianIds[${i}].name=this.value" id="tech-name-${i}"/>
+      ${!isHousekeeping ? `<select class="form-select" style="width:130px"
+          onchange="editReportTechnicianIds[${i}].role=this.value" id="tech-role-${i}">
+          <option value="technician" ${t.role==='technician'?'selected':''}>Technician</option>
+          <option value="lead" ${t.role==='lead'?'selected':''}>Lead</option>
+          <option value="helper" ${t.role==='helper'?'selected':''}>Helper</option>
+          <option value="driver" ${t.role==='driver'?'selected':''}>Driver</option>
+        </select>` : ''}
+      <button onclick="removeTechEntry(${i})" style="background:#fee2e2;color:#dc2626;border:none;cursor:pointer;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700">✕</button>
+    </div>`).join('');
+}
+
+function addTechEntry() {
+  const segName = document.getElementById('er-segment').textContent || '';
+  const isHousekeeping = segName.toLowerCase().includes('housekeeping');
+  editReportTechnicianIds.push({ id: null, userId: null, name: '', role: 'technician' });
+  renderTechnicianEntries(isHousekeeping);
+}
+
+function removeTechEntry(idx) {
+  editReportTechnicianIds.splice(idx, 1);
+  const segName = document.getElementById('er-segment').textContent || '';
+  renderTechnicianEntries(segName.toLowerCase().includes('housekeeping'));
+}
+
 async function saveEditReport() {
   const btn = document.getElementById('save-report-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  btn.disabled=true; btn.textContent='Saving…';
+
+  const segName = document.getElementById('er-segment').textContent || '';
+  const isHousekeeping = segName.toLowerCase().includes('housekeeping');
+
+  // Unregistered staff names (stored as [STAFF: ...] prefix in notes)
+  const freeNames = document.getElementById('er-tech-names').value.trim();
+  const rawNotes  = document.getElementById('er-notes').value.trim();
+  const notesValue = freeNames
+    ? `[STAFF: ${freeNames}]\n${rawNotes}`.trim()
+    : rawNotes || null;
 
   const payload = {
-    work_status: document.getElementById('er-status').value,
-    executed_date: document.getElementById('er-exec-date').value || null,
-    site_in: document.getElementById('er-site-in').value || null,
+    work_status:       document.getElementById('er-status').value,
+    executed_date:     document.getElementById('er-exec-date').value || null,
+    site_in:           document.getElementById('er-site-in').value || null,
     work_started_time: document.getElementById('er-work-start').value || null,
-    site_out: document.getElementById('er-site-out').value || null,
-    distance: parseFloat(document.getElementById('er-distance').value) || null,
-    final_amount: parseFloat(document.getElementById('er-final').value) || null,
-    advance: parseFloat(document.getElementById('er-advance').value) || 0,
-    material_cost: parseFloat(document.getElementById('er-material').value) || 0,
-    payment_mode: document.getElementById('er-payment-mode').value || null,
-    notes: document.getElementById('er-notes').value || null,
-    issues_logged: document.getElementById('er-issues').value || null,
-    supervisor: document.getElementById('er-supervisor').value || null,
-    updated_at: new Date().toISOString()
+    site_out:          document.getElementById('er-site-out').value || null,
+    distance:          parseFloat(document.getElementById('er-distance').value) || null,
+    final_amount:      parseFloat(document.getElementById('er-final').value) || null,
+    advance:           parseFloat(document.getElementById('er-advance').value) || 0,
+    material_cost:     parseFloat(document.getElementById('er-material').value) || 0,
+    payment_mode:      document.getElementById('er-payment-mode').value || null,
+    notes:             notesValue,
+    issues_logged:     document.getElementById('er-issues').value || null,
+    supervisor:        document.getElementById('er-supervisor').value || null,
+    updated_at:        new Date().toISOString()
   };
 
   const { error } = await db.from('work_reports').update(payload).eq('id', editReportId);
-  if (error) { toast(error.message, 'error'); btn.disabled=false; btn.textContent='💾 Save Changes'; return; }
+  if (error) { toast(error.message,'error'); btn.disabled=false; btn.textContent='💾 Save Changes'; return; }
 
-  // Handle technicians: delete existing and re-insert
-  const techInput = document.getElementById('er-technicians').value.trim();
-  if (techInput) {
-    await db.from('report_technicians').delete().eq('work_report_id', editReportId);
-    const techNames = techInput.split(',').map(n=>n.trim()).filter(Boolean);
-    for (const name of techNames) {
-      const { data: users } = await db.from('users').select('id').ilike('name', name).eq('role','technician').limit(1);
-      if (users?.length) {
-        await db.from('report_technicians').insert({ work_report_id: editReportId, technician_user_id: users[0].id });
-      }
+  // Sync report_technicians — only for registered technician users (need real UUID)
+  await db.from('report_technicians').delete().eq('work_report_id', editReportId);
+
+  const validRoles = ['lead','helper','driver','technician'];
+  for (const t of editReportTechnicianIds) {
+    if (!t.name.trim()) continue;
+    // Look up user by exact or partial name match, role=technician
+    const { data: found } = await db.from('users')
+      .select('id')
+      .ilike('name', `%${t.name.trim()}%`)
+      .eq('role','technician')
+      .limit(1);
+    if (!found?.length) {
+      // Can't insert without a real UUID — name is already saved in notes [STAFF:] prefix
+      toast(`Note: "${t.name}" not found as a registered technician — saved in staff notes only.`, 'warning');
+      continue;
     }
+    const roleVal = validRoles.includes(t.role) ? t.role : 'technician';
+    await db.from('report_technicians').insert({
+      work_report_id:       editReportId,
+      technician_user_id:   found[0].id,
+      role_on_job:          roleVal
+    });
   }
 
   toast('Work report updated!');
@@ -676,72 +720,63 @@ async function saveEditReport() {
   loadReports();
 }
 
-// ── EDIT BOOKING (Scheduling team can edit all booking fields) ──
+// ── EDIT BOOKING (Scheduling) ─────────────────────────────────
 let editBookingId = null;
 let editCustomerId = null;
 
 async function openEditBooking(bookingId) {
   editBookingId = bookingId;
   document.getElementById('eb-booking-id').textContent = `#${bookingId}`;
-  document.getElementById('save-booking-btn').textContent = '💾 Save Changes';
   document.getElementById('save-booking-btn').disabled = false;
+  document.getElementById('save-booking-btn').textContent = '💾 Save Changes';
 
-  const { data: b } = await db.from('bookings').select(`
-    *,
-    customers(*)
-  `).eq('id', bookingId).single();
-
-  if (!b) { toast('Booking not found', 'error'); return; }
+  const { data: b } = await db.from('bookings').select('*,customers(*)').eq('id', bookingId).single();
+  if (!b) { toast('Booking not found','error'); return; }
   editCustomerId = b.customer_id;
 
-  // Customer fields
-  document.getElementById('eb-name').value = b.customers?.name || '';
-  document.getElementById('eb-phone').value = b.customers?.phone || '';
-  document.getElementById('eb-alt-phone').value = b.customers?.alt_phone || '';
-  document.getElementById('eb-place').value = b.customers?.place || '';
-  document.getElementById('eb-address').value = b.customers?.address || '';
-  document.getElementById('eb-location').value = b.customers?.location_link || '';
-  // Booking fields
+  document.getElementById('eb-name').value            = b.customers?.name || '';
+  document.getElementById('eb-phone').value           = b.customers?.phone || '';
+  document.getElementById('eb-alt-phone').value       = b.customers?.alt_phone || '';
+  document.getElementById('eb-place').value           = b.customers?.place || '';
+  document.getElementById('eb-address').value         = b.customers?.address || '';
+  document.getElementById('eb-location').value        = b.customers?.location_link || '';
   document.getElementById('eb-service-details').value = b.service_details || '';
-  document.getElementById('eb-amount').value = b.total_amount || '';
-  document.getElementById('eb-advance').value = b.advance_amount || '';
-  document.getElementById('eb-payment-status').value = b.payment_status || 'pending';
-  document.getElementById('eb-status').value = b.status || 'booked';
-  document.getElementById('eb-attachment').value = b.attachment_link || '';
+  document.getElementById('eb-amount').value          = b.total_amount || '';
+  document.getElementById('eb-advance').value         = b.advance_amount || '';
+  document.getElementById('eb-payment-status').value  = b.payment_status || 'pending';
+  document.getElementById('eb-status').value          = b.status || 'booked';
+  document.getElementById('eb-attachment').value      = b.attachment_link || '';
 
   openModal('modal-edit-booking');
 }
 
 async function saveEditBooking() {
   const btn = document.getElementById('save-booking-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  btn.disabled=true; btn.textContent='Saving…';
 
-  // Update customer record
-  const { error: custErr } = await db.from('customers').update({
-    name: document.getElementById('eb-name').value.trim(),
-    phone: document.getElementById('eb-phone').value.trim(),
-    alt_phone: document.getElementById('eb-alt-phone').value.trim() || null,
-    place: document.getElementById('eb-place').value.trim(),
-    address: document.getElementById('eb-address').value.trim() || null,
-    location_link: document.getElementById('eb-location').value.trim() || null,
+  const { error: ce } = await db.from('customers').update({
+    name:          document.getElementById('eb-name').value.trim(),
+    phone:         document.getElementById('eb-phone').value.trim(),
+    alt_phone:     document.getElementById('eb-alt-phone').value.trim()||null,
+    place:         document.getElementById('eb-place').value.trim(),
+    address:       document.getElementById('eb-address').value.trim()||null,
+    location_link: document.getElementById('eb-location').value.trim()||null,
   }).eq('id', editCustomerId);
+  if (ce) { toast(ce.message,'error'); btn.disabled=false; btn.textContent='💾 Save Changes'; return; }
 
-  if (custErr) { toast(custErr.message, 'error'); btn.disabled=false; btn.textContent='💾 Save Changes'; return; }
-
-  // Update booking record
-  const { error: bkErr } = await db.from('bookings').update({
+  const { error: be } = await db.from('bookings').update({
     service_details: document.getElementById('eb-service-details').value.trim(),
-    total_amount: parseFloat(document.getElementById('eb-amount').value) || 0,
-    advance_amount: parseFloat(document.getElementById('eb-advance').value) || 0,
-    payment_status: document.getElementById('eb-payment-status').value,
-    status: document.getElementById('eb-status').value,
-    attachment_link: document.getElementById('eb-attachment').value.trim() || null,
+    total_amount:    parseFloat(document.getElementById('eb-amount').value)||0,
+    advance_amount:  parseFloat(document.getElementById('eb-advance').value)||0,
+    payment_status:  document.getElementById('eb-payment-status').value,
+    status:          document.getElementById('eb-status').value,
+    attachment_link: document.getElementById('eb-attachment').value.trim()||null,
   }).eq('id', editBookingId);
+  if (be) { toast(be.message,'error'); btn.disabled=false; btn.textContent='💾 Save Changes'; return; }
 
-  if (bkErr) { toast(bkErr.message, 'error'); btn.disabled=false; btn.textContent='💾 Save Changes'; return; }
-
-  toast('Booking updated successfully!');
+  toast('Booking updated!');
   closeModal('modal-edit-booking');
+  closeSidePanel();
   loadBookings();
 }
 
@@ -751,7 +786,7 @@ function showView(view) {
   ['slots','bookings','reports'].forEach(v => {
     document.getElementById('view-'+v).style.display = v===view?'block':'none';
   });
-  const titles = { slots:['Slot Management','Create and manage slot capacity'], bookings:['Place Work View','All bookings with copy-paste dispatch'], reports:['Work Reports','Review and edit submitted reports'] };
+  const titles = { slots:['Slot Management','Create and manage slot capacity'], bookings:['Place Work View','All bookings with copy-paste dispatch'], reports:['Work Reports','Review, edit and download daily reports'] };
   document.getElementById('page-title').textContent = titles[view][0];
   document.getElementById('page-subtitle').textContent = titles[view][1];
   const topBtn = document.getElementById('topbar-action');
@@ -761,5 +796,127 @@ function showView(view) {
   if (view==='reports') { document.getElementById('rep-date').value=new Date().toISOString().split('T')[0]; loadReports(); }
 }
 </script>
+
+<!-- Edit Work Report Modal -->
+<div class="modal-overlay" id="modal-edit-report">
+  <div class="modal-box" style="max-width:660px">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Work Report <span id="er-report-id" style="color:var(--blue-500);font-size:14px"></span></div>
+      <button class="modal-close" onclick="closeModal('modal-edit-report')">&times;</button>
+    </div>
+
+    <!-- Job info -->
+    <div style="background:var(--blue-50);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:24px">
+      <div><span style="font-size:11px;color:var(--slate-400);font-weight:600;text-transform:uppercase">Customer</span><div id="er-customer" style="font-weight:700;font-size:14px;margin-top:2px">—</div></div>
+      <div><span style="font-size:11px;color:var(--slate-400);font-weight:600;text-transform:uppercase">Segment</span><div id="er-segment" style="font-weight:700;font-size:14px;margin-top:2px">—</div></div>
+    </div>
+
+    <div class="section-divider">Time Tracking</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Execution Date</label><input class="form-input" type="date" id="er-exec-date"/></div>
+      <div class="form-group"><label class="form-label">Work Status</label>
+        <select class="form-select" id="er-status">
+          <option value="pending">⏳ Pending</option><option value="in_progress">🔄 In Progress</option>
+          <option value="completed">✅ Completed</option><option value="rescheduled">📅 Rescheduled</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Site In</label><input class="form-input" type="time" id="er-site-in"/></div>
+      <div class="form-group"><label class="form-label">Work Started</label><input class="form-input" type="time" id="er-work-start"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Site Out</label><input class="form-input" type="time" id="er-site-out"/></div>
+      <div class="form-group"><label class="form-label">Distance (km)</label><input class="form-input" type="number" id="er-distance" placeholder="0"/></div>
+    </div>
+
+    <div class="section-divider">Personnel</div>
+    <div class="form-group">
+      <label class="form-label" id="er-tech-label">Technician Names</label>
+      <p style="font-size:11px;color:var(--slate-400);margin-bottom:8px">Registered technicians below link to their profiles for analysis. Unregistered names go in the free-text field.</p>
+      <div id="er-tech-entries" style="margin-bottom:8px"></div>
+      <button onclick="addTechEntry()" class="btn btn-secondary btn-sm" type="button">+ Add Registered Technician</button>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--slate-100)">
+        <label class="form-label" style="font-size:12px">Unregistered / Outside Staff Names <span style="font-weight:400;color:var(--slate-400)">(comma separated)</span></label>
+        <input class="form-input" type="text" id="er-tech-names" placeholder="e.g. Raju Kumar, Suresh P (not in system)"/>
+      </div>
+    </div>
+    <div class="form-group" id="er-supervisor-row">
+      <label class="form-label">Supervisor</label>
+      <input class="form-input" type="text" id="er-supervisor" placeholder="Supervisor name"/>
+    </div>
+
+    <div class="section-divider">Financials</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Final Amount (₹)</label><input class="form-input" type="number" id="er-final" placeholder="0"/></div>
+      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="er-advance" placeholder="0"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Material Cost (₹)</label><input class="form-input" type="number" id="er-material" placeholder="0"/></div>
+      <div class="form-group"><label class="form-label">Payment Mode</label>
+        <select class="form-select" id="er-payment-mode">
+          <option value="">Select</option><option value="cash">💵 Cash</option>
+          <option value="upi">📱 UPI</option><option value="card">💳 Card</option>
+          <option value="online_transfer">🏦 Online Transfer</option><option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-divider">Notes & Issues</div>
+    <div class="form-group"><label class="form-label">Technician Notes</label><textarea class="form-textarea" id="er-notes" placeholder="Notes from technician…"></textarea></div>
+    <div class="form-group"><label class="form-label">Issues Logged</label><textarea class="form-textarea" id="er-issues" placeholder="Any issues or failures…"></textarea></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-report')">Cancel</button>
+      <button class="btn btn-primary" id="save-report-btn" onclick="saveEditReport()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Booking Modal -->
+<div class="modal-overlay" id="modal-edit-booking">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Booking <span id="eb-booking-id" style="color:var(--blue-500);font-size:14px"></span></div>
+      <button class="modal-close" onclick="closeModal('modal-edit-booking')">&times;</button>
+    </div>
+    <div class="section-divider">Customer Details</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Name</label><input class="form-input" type="text" id="eb-name"/></div>
+      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" type="tel" id="eb-phone"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Alt Phone</label><input class="form-input" type="tel" id="eb-alt-phone"/></div>
+      <div class="form-group"><label class="form-label">Place</label><input class="form-input" type="text" id="eb-place"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Address</label><input class="form-input" type="text" id="eb-address"/></div>
+    <div class="form-group"><label class="form-label">📍 Location Link</label><input class="form-input" type="url" id="eb-location" placeholder="https://maps.google.com/…"/></div>
+    <div class="section-divider">Booking Details</div>
+    <div class="form-group"><label class="form-label">Work / Service Details</label><textarea class="form-textarea" id="eb-service-details"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Total Amount (₹)</label><input class="form-input" type="number" id="eb-amount"/></div>
+      <div class="form-group"><label class="form-label">Advance (₹)</label><input class="form-input" type="number" id="eb-advance"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Payment Status</label>
+        <select class="form-select" id="eb-payment-status">
+          <option value="pending">Pending</option><option value="paid">Paid</option><option value="refunded">Refunded</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Booking Status</label>
+        <select class="form-select" id="eb-status">
+          <option value="booked">Booked</option><option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option><option value="rescheduled">Rescheduled</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">📎 Attachment Link</label><input class="form-input" type="url" id="eb-attachment" placeholder="https://drive.google.com/…"/></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-booking')">Cancel</button>
+      <button class="btn btn-primary" id="save-booking-btn" onclick="saveEditBooking()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
