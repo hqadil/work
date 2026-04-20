@@ -351,12 +351,6 @@ async function loadSlots() {
 
 async function slotClick(slotId, segName, date, time, isFull) {
   if (isFull) { toast('This slot is full.', 'warning'); return; }
-  // Re-check in real time
-  const { data: fresh } = await db.from('slots').select('booked_count,capacity').eq('id', slotId).single();
-  if (fresh && fresh.booked_count >= fresh.capacity) {
-    toast('This slot just filled up. Please refresh and pick another.', 'error');
-    await loadSlots(); await loadStats(); return;
-  }
   selectedSlotId = slotId;
   selectedCustomerId = null;
   // Reset form
@@ -430,17 +424,6 @@ async function createBooking() {
       status: 'booked'
     });
     if (be) throw be;
-
-    // Increment booked_count on the slot — re-fetch first to get current value
-    const { data: freshSlot } = await db.from('slots').select('booked_count,capacity').eq('id', selectedSlotId).single();
-    if (freshSlot) {
-      if (freshSlot.booked_count >= freshSlot.capacity) {
-        // Rollback: delete the booking we just created
-        await db.from('bookings').delete().eq('customer_id', custId).eq('slot_id', selectedSlotId).order('created_at',{ascending:false}).limit(1);
-        throw new Error('Slot just filled up — please pick another slot.');
-      }
-      await db.from('slots').update({ booked_count: freshSlot.booked_count + 1 }).eq('id', selectedSlotId);
-    }
 
     toast('Booking created successfully!');
     closeModal('modal-booking');
