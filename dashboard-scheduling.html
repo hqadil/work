@@ -87,6 +87,38 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
 /* Modal form row */
 .form-row { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
 .section-divider { font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--blue-700);padding:8px 0 12px;border-bottom:2px solid var(--blue-100);margin-bottom:16px; }
+
+/* ── EOD Report ── */
+.eod-header { background:linear-gradient(135deg,#1e3a8a,#1d4ed8);border-radius:16px;padding:22px 28px;margin-bottom:20px;color:#fff; }
+.eod-header h2 { font-size:20px;font-weight:800;margin-bottom:4px; }
+.eod-header p  { font-size:13px;opacity:.7; }
+.eod-kpi-row { display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px; }
+.eod-kpi { background:#fff;border-radius:12px;padding:16px;border:1px solid var(--slate-200);text-align:center; }
+.eod-kpi-val { font-size:22px;font-weight:800;color:var(--slate-800); }
+.eod-kpi-lbl { font-size:11px;color:var(--slate-400);font-weight:600;margin-top:3px;text-transform:uppercase;letter-spacing:.4px; }
+.eod-section { background:#fff;border-radius:14px;border:1px solid var(--slate-200);margin-bottom:20px;overflow:hidden; }
+.eod-sec-title { padding:14px 18px;font-size:13px;font-weight:700;border-bottom:1px solid var(--slate-100);display:flex;justify-content:space-between;align-items:center;background:var(--slate-50); }
+.eod-table { width:100%;border-collapse:collapse; }
+.eod-table th { padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.4px;background:var(--slate-50);border-bottom:1px solid var(--slate-200); }
+.eod-table th:first-child { text-align:left; }
+.eod-table td { padding:10px 14px;font-size:13px;border-bottom:1px solid var(--slate-100);text-align:right;vertical-align:middle; }
+.eod-table td:first-child { text-align:left;font-weight:600; }
+.eod-table tr:last-child td { border-bottom:none; }
+.eod-table tr.eod-total td { background:var(--blue-50);font-weight:800;color:var(--blue-700);border-top:2px solid var(--blue-200); }
+.eod-pct { font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-block; }
+.eod-pct.hi { background:#dcfce7;color:#16a34a; }
+.eod-pct.md { background:#fef3c7;color:#d97706; }
+.eod-pct.lo { background:#fee2e2;color:#dc2626; }
+.eod-issue-row { display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--slate-100); }
+.eod-issue-row:last-child { border-bottom:none; }
+.eod-seg-tag { background:var(--blue-50);color:var(--blue-700);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0; }
+.eod-note-area { width:100%;padding:10px 14px;border:2px solid var(--slate-200);border-radius:10px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px;color:var(--slate-800);background:var(--slate-50);box-sizing:border-box; }
+.eod-note-area:focus { outline:none;border-color:var(--blue-500);background:#fff; }
+@media print {
+  .sidebar,.topbar,.filter-bar,.no-print { display:none!important; }
+  .main { margin-left:0!important; }
+  .eod-section,.eod-kpi { break-inside:avoid; }
+}
 </style>
 </head>
 <body>
@@ -107,6 +139,10 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
     <a class="nav-item" href="#" onclick="showView('reports')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Work Reports
+    </a>
+    <a class="nav-item" href="#" onclick="showView('eod')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      EOD Report
     </a>
     <div class="sidebar-bottom"><div id="user-badge-sidebar"></div></div>
   </nav>
@@ -158,6 +194,18 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
           <button class="btn btn-secondary btn-sm" onclick="downloadDailyCSV()">⬇ Daily CSV</button>
         </div>
         <div id="reports-table"></div>
+      </div>
+
+      <!-- EOD REPORT VIEW -->
+      <div id="view-eod" style="display:none">
+        <div class="filter-bar">
+          <label style="font-size:13px;font-weight:600;color:var(--slate-600)">Date:</label>
+          <input type="date" id="eod-date"/>
+          <button class="btn btn-primary btn-sm" onclick="loadEOD()">📊 Generate Report</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportEODCSV()">⬇ Export CSV</button>
+          <button class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #86efac" onclick="printEOD()">🖨 Print / PDF</button>
+        </div>
+        <div id="eod-container"></div>
       </div>
 
     </div>
@@ -791,17 +839,314 @@ async function saveEditBooking() {
 function showView(view) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   event?.target?.closest('.nav-item')?.classList.add('active');
-  ['slots','bookings','reports'].forEach(v => {
+  ['slots','bookings','reports','eod'].forEach(v => {
     document.getElementById('view-'+v).style.display = v===view?'block':'none';
   });
-  const titles = { slots:['Slot Management','Create and manage slot capacity'], bookings:['Place Work View','All bookings with copy-paste dispatch'], reports:['Work Reports','Review, edit and download daily reports'] };
-  document.getElementById('page-title').textContent = titles[view][0];
+  const titles = {
+    slots:    ['Slot Management',      'Create and manage slot capacity'],
+    bookings: ['Place Work View',      'All bookings with copy-paste dispatch'],
+    reports:  ['Work Reports',         'Review, edit and download daily reports'],
+    eod:      ['EOD Report',           'End of day summary — auto-generated from your data']
+  };
+  document.getElementById('page-title').textContent    = titles[view][0];
   document.getElementById('page-subtitle').textContent = titles[view][1];
   const topBtn = document.getElementById('topbar-action');
   topBtn.textContent = view==='slots'?'+ Create Slot':'🔄 Refresh';
-  topBtn.onclick = view==='slots' ? openCreateSlotModal : () => { if(view==='bookings') loadBookings(); else loadReports(); };
+  topBtn.onclick = view==='slots' ? openCreateSlotModal : () => {
+    if(view==='bookings') loadBookings();
+    else if(view==='reports') loadReports();
+    else if(view==='eod') loadEOD();
+  };
   if (view==='bookings') { document.getElementById('bk-date').value=new Date().toISOString().split('T')[0]; loadBookings(); }
-  if (view==='reports') { document.getElementById('rep-date').value=new Date().toISOString().split('T')[0]; loadReports(); }
+  if (view==='reports')  { document.getElementById('rep-date').value=new Date().toISOString().split('T')[0]; loadReports(); }
+  if (view==='eod')      { document.getElementById('eod-date').value=new Date().toISOString().split('T')[0]; loadEOD(); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// EOD REPORT
+// ══════════════════════════════════════════════════════════════
+let eodData = null; // cached for CSV export
+
+async function loadEOD() {
+  const date = document.getElementById('eod-date').value;
+  if (!date) return;
+  const container = document.getElementById('eod-container');
+  container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Building EOD report…</div>';
+
+  // ── Fetch all segments ──────────────────────────────────────
+  const { data: segments } = await db.from('segments').select('id,name').order('name');
+
+  // ── Fetch all bookings for the date ──────────────────────────
+  const { data: bookings } = await db.from('bookings')
+    .select(`id,status,total_amount,advance_amount,slots(date,segment_id,segments(name))`)
+    .eq('slots.date', date);
+
+  // ── Fetch all work_reports for the date ──────────────────────
+  const { data: reports } = await db.from('work_reports')
+    .select(`
+      id,work_status,final_amount,material_cost,advance,notes,issues_logged,
+      bookings(slot_id,slots(segment_id,segments(name)))
+    `)
+    .eq('executed_date', date);
+
+  // ── Fetch daily log entries for this date ────────────────────
+  const { data: logEntries } = await db.from('daily_logs')
+    .select('*')
+    .eq('log_date', date)
+    .order('created_at');
+
+  const bks  = bookings || [];
+  const reps = reports  || [];
+  const logs = logEntries || [];
+
+  // ── Build per-segment stats ───────────────────────────────────
+  const GST_RATE = 0.18; // 18% GST — adjust if different
+  const segStats = {};
+  (segments||[]).forEach(s => {
+    segStats[s.id] = {
+      name:          s.name,
+      salesAchieved: 0,  // total_amount of non-cancelled bookings
+      executed:      0,  // final_amount from work_reports
+      withoutGST:    0,  // executed / 1.18
+      salesCount:    0,  // bookings created (non-cancelled)
+      executedCount: 0,  // completed work_reports
+      pending:       0,  // booked but no completed report
+      addOn:         0,  // (future: add-on field)
+      issues:        [],
+      notes:         []
+    };
+  });
+
+  // Bookings → salesAchieved, salesCount
+  bks.filter(b=>b.status!=='cancelled').forEach(b => {
+    const sid = b.slots?.segment_id;
+    if (sid && segStats[sid]) {
+      segStats[sid].salesAchieved += Number(b.total_amount||0);
+      segStats[sid].salesCount++;
+    }
+  });
+
+  // Work reports → executed, executedCount, issues
+  reps.forEach(r => {
+    const sid = r.bookings?.slots?.segment_id;
+    if (sid && segStats[sid]) {
+      const fin = Number(r.final_amount||0);
+      segStats[sid].executed      += fin;
+      segStats[sid].withoutGST    += fin / (1 + GST_RATE);
+      if (r.work_status === 'completed') segStats[sid].executedCount++;
+      // Extract issues (strip [STAFF:] prefix)
+      if (r.issues_logged) {
+        segStats[sid].issues.push(r.issues_logged.replace(/^\[STAFF:[^\]]+\]\n?/,'').trim());
+      }
+    }
+  });
+
+  // Pending = salesCount - executedCount
+  Object.values(segStats).forEach(s => { s.pending = Math.max(0, s.salesCount - s.executedCount); });
+
+  // Daily log notes & issues
+  logs.forEach(l => {
+    const sid = l.segment_id;
+    if (sid && segStats[sid]) {
+      if (l.type === 'issue') segStats[sid].issues.push(l.content);
+      if (l.type === 'note')  segStats[sid].notes.push(l.content);
+    }
+  });
+
+  // ── Totals ────────────────────────────────────────────────────
+  const rows = Object.values(segStats);
+  const totSales    = rows.reduce((a,r)=>a+r.salesAchieved,0);
+  const totExec     = rows.reduce((a,r)=>a+r.executed,0);
+  const totNoGST    = rows.reduce((a,r)=>a+r.withoutGST,0);
+  const totSalesCnt = rows.reduce((a,r)=>a+r.salesCount,0);
+  const totExecCnt  = rows.reduce((a,r)=>a+r.executedCount,0);
+  const totPending  = rows.reduce((a,r)=>a+r.pending,0);
+  const overallPct  = totSales > 0 ? (totExec/totSales*100) : 0;
+
+  eodData = { date, rows, totSales, totExec, totNoGST, totSalesCnt, totExecCnt, totPending, overallPct, logs };
+
+  // ── Render ────────────────────────────────────────────────────
+  const fmtN = n => Number(n).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const pctClass = p => p>=80?'hi':p>=40?'md':'lo';
+
+  const dateLabel = new Date(date).toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  container.innerHTML = `
+    <!-- Header -->
+    <div class="eod-header no-print" style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h2>📊 End of Day Report</h2>
+        <p>${dateLabel}</p>
+      </div>
+      <div style="display:flex;gap:10px" class="no-print">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="exportEODCSV()">⬇ CSV</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="printEOD()">🖨 Print</button>
+      </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="eod-kpi-row">
+      <div class="eod-kpi"><div class="eod-kpi-val">${formatCurrency(totSales)}</div><div class="eod-kpi-lbl">Sales Achieved</div></div>
+      <div class="eod-kpi"><div class="eod-kpi-val">${formatCurrency(totExec)}</div><div class="eod-kpi-lbl">Executed</div></div>
+      <div class="eod-kpi"><div class="eod-kpi-val">${formatCurrency(totNoGST)}</div><div class="eod-kpi-lbl">Without GST</div></div>
+      <div class="eod-kpi"><div class="eod-kpi-val">${totExecCnt} / ${totSalesCnt}</div><div class="eod-kpi-lbl">Executed / Booked</div></div>
+      <div class="eod-kpi"><div class="eod-kpi-val"><span class="eod-pct ${pctClass(overallPct)}">${overallPct.toFixed(1)}%</span></div><div class="eod-kpi-lbl">Execution %</div></div>
+    </div>
+
+    <!-- Main segment table -->
+    <div class="eod-section">
+      <div class="eod-sec-title">
+        <span>Segment Breakdown</span>
+        <span style="font-size:11px;color:var(--slate-400);font-weight:500">GST @ ${(GST_RATE*100).toFixed(0)}%</span>
+      </div>
+      <div style="overflow-x:auto">
+      <table class="eod-table">
+        <thead><tr>
+          <th style="text-align:left">Segment</th>
+          <th>Sales Achieved</th>
+          <th>Executed</th>
+          <th>Without GST</th>
+          <th>Sales Count</th>
+          <th>Exec Count</th>
+          <th>Pending</th>
+          <th>% Execution</th>
+          <th>Remarks / Issues</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r => {
+            const pct = r.salesAchieved > 0 ? (r.executed/r.salesAchieved*100) : 0;
+            const remarks = [...r.issues.slice(0,2), ...r.notes.slice(0,1)].join(' · ') || '—';
+            return `<tr>
+              <td>${r.name}</td>
+              <td>${fmtN(r.salesAchieved)}</td>
+              <td>${fmtN(r.executed)}</td>
+              <td>${fmtN(r.withoutGST)}</td>
+              <td>${r.salesCount}</td>
+              <td>${r.executedCount}</td>
+              <td>${r.pending > 0 ? `<span style="color:#dc2626;font-weight:700">${r.pending}</span>` : r.pending}</td>
+              <td><span class="eod-pct ${pctClass(pct)}">${pct.toFixed(1)}%</span></td>
+              <td style="text-align:left;max-width:200px;font-size:12px;color:var(--slate-500)">${remarks}</td>
+            </tr>`;
+          }).join('')}
+          <tr class="eod-total">
+            <td>TOTAL</td>
+            <td>${fmtN(totSales)}</td>
+            <td>${fmtN(totExec)}</td>
+            <td>${fmtN(totNoGST)}</td>
+            <td>${totSalesCnt}</td>
+            <td>${totExecCnt}</td>
+            <td>${totPending > 0 ? `<span style="color:#dc2626">${totPending}</span>` : 0}</td>
+            <td><span class="eod-pct ${pctClass(overallPct)}">${overallPct.toFixed(1)}%</span></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Issues Log per segment -->
+    <div class="eod-section">
+      <div class="eod-sec-title">
+        <span>⚠️ Issues Log</span>
+        <button class="btn btn-sm btn-primary no-print" onclick="openAddLog('issue')">+ Log Issue</button>
+      </div>
+      <div id="eod-issues-body">
+        ${rows.filter(r=>r.issues.length>0).length === 0
+          ? `<div style="padding:16px 18px;color:var(--slate-400);font-size:13px">No issues logged for this date.</div>`
+          : rows.filter(r=>r.issues.length>0).map(r=>
+              r.issues.map(iss=>`
+                <div class="eod-issue-row">
+                  <span class="eod-seg-tag">${r.name}</span>
+                  <span style="font-size:13px;color:var(--slate-700)">${iss}</span>
+                </div>`).join('')
+            ).join('')
+        }
+      </div>
+    </div>
+
+    <!-- Notes section -->
+    <div class="eod-section">
+      <div class="eod-sec-title">
+        <span>📝 Daily Notes</span>
+        <button class="btn btn-sm btn-primary no-print" onclick="openAddLog('note')">+ Add Note</button>
+      </div>
+      <div id="eod-notes-body">
+        ${rows.filter(r=>r.notes.length>0).length === 0 && logs.filter(l=>l.type==='note').length === 0
+          ? `<div style="padding:16px 18px;color:var(--slate-400);font-size:13px">No notes for this date.</div>`
+          : rows.filter(r=>r.notes.length>0).map(r=>
+              r.notes.map(n=>`
+                <div class="eod-issue-row">
+                  <span class="eod-seg-tag">${r.name}</span>
+                  <span style="font-size:13px;color:var(--slate-700)">${n}</span>
+                </div>`).join('')
+            ).join('')
+        }
+      </div>
+    </div>
+  `;
+}
+
+// ── Add Issue / Note modal ────────────────────────────────────
+function openAddLog(type) {
+  const date = document.getElementById('eod-date').value;
+  if (!date) { toast('Select a date first','warning'); return; }
+  document.getElementById('log-type-label').textContent = type === 'issue' ? '⚠️ Log an Issue' : '📝 Add a Note';
+  document.getElementById('log-type-hidden').value = type;
+  document.getElementById('log-seg-select').innerHTML = '<option value="">General (no segment)</option>';
+  // Populate segments
+  db.from('segments').select('id,name').order('name').then(({data}) => {
+    (data||[]).forEach(s => {
+      const o = document.createElement('option'); o.value = s.id; o.textContent = s.name;
+      document.getElementById('log-seg-select').appendChild(o);
+    });
+  });
+  document.getElementById('log-content').value = '';
+  openModal('modal-add-log');
+}
+
+async function saveLog() {
+  const date    = document.getElementById('eod-date').value;
+  const type    = document.getElementById('log-type-hidden').value;
+  const segId   = document.getElementById('log-seg-select').value || null;
+  const content = document.getElementById('log-content').value.trim();
+  if (!content) { toast('Please enter some text','error'); return; }
+
+  const { error } = await db.from('daily_logs').insert({
+    log_date:   date,
+    type:       type,
+    segment_id: segId ? parseInt(segId) : null,
+    content:    content,
+    created_by: currentUser.id
+  });
+  if (error) { toast(error.message,'error'); return; }
+  toast(type === 'issue' ? 'Issue logged!' : 'Note saved!');
+  closeModal('modal-add-log');
+  loadEOD(); // refresh
+}
+
+// ── EOD CSV Export ────────────────────────────────────────────
+function exportEODCSV() {
+  if (!eodData) { toast('Generate the report first','warning'); return; }
+  const { date, rows, totSales, totExec, totNoGST, totSalesCnt, totExecCnt, totPending, overallPct } = eodData;
+  const headers = ['Segment','Sales Achieved','Executed','Without GST','Sales Count','Executed Count','Pending','% Execution','Issues / Remarks'];
+  const csvRows = rows.map(r => {
+    const pct = r.salesAchieved > 0 ? (r.executed/r.salesAchieved*100).toFixed(2) : '0.00';
+    const remarks = [...r.issues, ...r.notes].join(' | ');
+    return [r.name, r.salesAchieved.toFixed(2), r.executed.toFixed(2), r.withoutGST.toFixed(2),
+            r.salesCount, r.executedCount, r.pending, pct+'%', remarks];
+  });
+  csvRows.push(['TOTAL', totSales.toFixed(2), totExec.toFixed(2), totNoGST.toFixed(2),
+                totSalesCnt, totExecCnt, totPending, overallPct.toFixed(2)+'%', '']);
+  const csv = [headers,...csvRows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download = `EOD_${date}.csv`; a.click();
+  toast('EOD CSV downloaded!');
+}
+
+// ── Print EOD ─────────────────────────────────────────────────
+function printEOD() {
+  window.print();
 }
 </script>
 
@@ -1109,6 +1454,31 @@ async function saveExtendWork() {
   loadBookings();
 }
 </script>
+
+<!-- Add Issue / Note Modal -->
+<div class="modal-overlay" id="modal-add-log">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title" id="log-type-label">Log an Issue</div>
+      <button class="modal-close" onclick="closeModal('modal-add-log')">&times;</button>
+    </div>
+    <input type="hidden" id="log-type-hidden" value="issue"/>
+    <div class="form-group">
+      <label class="form-label">Segment <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
+      <select class="form-select" id="log-seg-select">
+        <option value="">General (no segment)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Details *</label>
+      <textarea class="form-textarea" id="log-content" placeholder="Describe the issue or note…" style="min-height:100px"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-log')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLog()">💾 Save</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
