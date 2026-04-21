@@ -923,6 +923,7 @@ function showView(view) {
     document.getElementById('cw-date').value = new Date().toISOString().split('T')[0];
     loadCompletedWorks();
   }
+  if (view==='segment') {
     const t = new Date().toISOString().split('T')[0];
     document.getElementById('seg-date-from').value = t;
     document.getElementById('seg-date-to').value   = t;
