@@ -126,6 +126,29 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color
   .stats-row{grid-template-columns:1fr 1fr}
   .jobs-grid{grid-template-columns:1fr}
 }
+
+/* Segment Work View */
+.sw-section{margin-bottom:28px}
+.sw-section-header{display:flex;align-items:center;gap:12px;padding:12px 18px;margin-bottom:12px;
+  background:linear-gradient(135deg,#1c1917,#44403c);border-radius:12px;color:#fff}
+.sw-section-title{font-size:15px;font-weight:800;flex:1}
+.sw-section-count{font-size:12px;background:rgba(245,158,11,.25);border:1px solid rgba(245,158,11,.4);
+  color:#fbbf24;padding:3px 10px;border-radius:20px;font-weight:700}
+.sw-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);border:1px solid var(--slate-200)}
+.sw-table thead tr{background:var(--amber-xlight)}
+.sw-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--slate-500);
+  text-transform:uppercase;letter-spacing:.5px}
+.sw-table td{padding:11px 14px;font-size:13px;border-top:1px solid var(--slate-100);vertical-align:top}
+.sw-table tr{cursor:pointer;transition:background .15s}
+.sw-table tr:hover td{background:var(--amber-xlight)}
+.sw-seg-pill{padding:7px 16px;border-radius:20px;border:2px solid var(--slate-200);font-size:13px;
+  font-weight:600;cursor:pointer;background:#fff;color:var(--slate-600);transition:all .2s;font-family:inherit}
+.sw-seg-pill.active{background:var(--amber);color:#fff;border-color:var(--amber)}
+.sw-seg-pill:hover:not(.active){border-color:var(--amber);color:var(--amber-dark)}
+.remark-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
+.remark-badge.empty{background:#f1f5f9;color:#94a3b8}
+.remark-badge.filled{background:var(--amber-light);color:var(--amber-dark)}
 </style>
 </head>
 <body>
@@ -142,6 +165,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color
     <a class="nav-item" href="#" onclick="showView('upcoming',this);return false">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Upcoming Jobs
+    </a>
+    <a class="nav-item" href="#" onclick="showView('segwork',this);return false">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+      My Work View
     </a>
     <a class="nav-item" href="#" onclick="showView('history',this);return false">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -213,6 +240,17 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color
         <div id="history-container"></div>
       </div>
 
+      <!-- Segment Work View -->
+      <div id="view-segwork" style="display:none">
+        <div class="filter-bar">
+          <label style="font-size:13px;font-weight:600;color:var(--slate-600)">Date:</label>
+          <input type="date" id="sw-date" onchange="loadSegWork()"/>
+          <div id="sw-seg-pills" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
+          <button class="btn btn-secondary btn-sm" onclick="loadSegWork()">🔄 Refresh</button>
+        </div>
+        <div id="segwork-container"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -236,18 +274,38 @@ async function initTechnician() {
   document.getElementById('wc-init').textContent = currentUser.name.charAt(0).toUpperCase();
   document.getElementById('wc-name').textContent = currentUser.name;
 
-  // Find segments from past report_technicians
-  const { data: past } = await db.from('report_technicians')
-    .select('work_reports(bookings(slots(segment_id,segments(name))))')
-    .eq('technician_user_id', currentUser.id);
+  // ── Try to load segments from technician_segments assignment table first ──
+  const { data: assigned, error: assignErr } = await db.from('technician_segments')
+    .select('segment_id, segments(id, name)')
+    .eq('user_id', currentUser.id);
 
-  const segMap = {};
-  if (past?.length) {
-    past.forEach(p => {
-      const s = p.work_reports?.bookings?.slots;
-      if (s?.segment_id) segMap[String(s.segment_id)] = s.segments?.name || String(s.segment_id);
+  if (!assignErr && assigned?.length) {
+    // Use explicitly assigned segments
+    const segMap = {};
+    assigned.forEach(a => {
+      if (a.segment_id) segMap[String(a.segment_id)] = a.segments?.name || String(a.segment_id);
     });
     mySegmentIds = Object.keys(segMap);
+    const pillsEl = document.getElementById('wc-segs');
+    pillsEl.innerHTML = Object.values(segMap).map(n=>`<span class="seg-pill">${n}</span>`).join('');
+  } else {
+    // Fallback: derive from past report_technicians
+    const { data: past } = await db.from('report_technicians')
+      .select('work_reports(bookings(slots(segment_id,segments(name))))')
+      .eq('technician_user_id', currentUser.id);
+    const segMap = {};
+    if (past?.length) {
+      past.forEach(p => {
+        const s = p.work_reports?.bookings?.slots;
+        if (s?.segment_id) segMap[String(s.segment_id)] = s.segments?.name || String(s.segment_id);
+      });
+      mySegmentIds = Object.keys(segMap);
+    }
+    const pillsEl = document.getElementById('wc-segs');
+    const names = Object.values(segMap);
+    pillsEl.innerHTML = names.length
+      ? names.map(n=>`<span class="seg-pill">${n}</span>`).join('')
+      : '<span class="seg-pill">All Segments</span>';
   }
 
   // All segments for filter dropdown
@@ -468,20 +526,147 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── SEGMENT WORK VIEW ─────────────────────────────────────────
+let swData = [];
+let swFilter = '';
+
+async function loadSegWork() {
+  const date = document.getElementById('sw-date').value;
+  const container = document.getElementById('segwork-container');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
+
+  // Fetch bookings for my segments on the selected date
+  let q = db.from('bookings')
+    .select(`id,status,service_details,total_amount,advance_amount,remark,
+      customers(name,phone,place,address,alt_phone,location_link),
+      slots(id,date,time,segment_id,segments(id,name))`)
+    .order('slots(date)', { ascending: true })
+    .order('slots(time)', { ascending: true })
+    .in('status', ['booked','rescheduled','completed']);
+  if (date) q = q.eq('slots.date', date);
+
+  const { data } = await q;
+  let all = (data || []).filter(b => b.slots?.date);
+
+  // Filter to my segments if assigned
+  if (mySegmentIds.length) {
+    all = all.filter(b => mySegmentIds.includes(String(b.slots?.segment_id)));
+  }
+  swData = all;
+
+  // Build segment pills
+  const segsMap = {};
+  swData.forEach(b => {
+    const s = b.slots?.segments;
+    if (s) segsMap[s.id] = s.name;
+  });
+
+  const pillsBar = document.getElementById('sw-seg-pills');
+  pillsBar.innerHTML = `<button class="sw-seg-pill ${swFilter===''?'active':''}" onclick="setSwFilter('')">All</button>`;
+  Object.entries(segsMap).forEach(([id, name]) => {
+    pillsBar.innerHTML += `<button class="sw-seg-pill ${swFilter===String(id)?'active':''}" onclick="setSwFilter('${id}')">${name}</button>`;
+  });
+
+  renderSegWork(container);
+}
+
+function setSwFilter(segId) {
+  swFilter = String(segId);
+  document.querySelectorAll('.sw-seg-pill').forEach(p => {
+    const isAll = p.textContent.trim() === 'All';
+    p.classList.toggle('active', isAll ? segId === '' : p.getAttribute('onclick')?.includes(`'${segId}'`));
+  });
+  renderSegWork(document.getElementById('segwork-container'));
+}
+
+function renderSegWork(container) {
+  const filtered = swFilter
+    ? swData.filter(b => String(b.slots?.segments?.id) === swFilter)
+    : swData;
+
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><h3>No jobs found</h3><p>No bookings for your segments on this date.</p></div>`;
+    return;
+  }
+
+  // Group by segment
+  const groups = {};
+  filtered.forEach(b => {
+    const seg = b.slots?.segments;
+    const key = seg?.id || 'unknown';
+    if (!groups[key]) groups[key] = { name: seg?.name || 'Unknown', bookings: [] };
+    groups[key].bookings.push(b);
+  });
+
+  container.innerHTML = Object.values(groups).map(g => `
+    <div class="sw-section">
+      <div class="sw-section-header">
+        <div class="sw-section-title">🔧 ${escHtml(g.name)}</div>
+        <div class="sw-section-count">${g.bookings.length} job${g.bookings.length!==1?'s':''}</div>
+      </div>
+      <div class="data-table-wrap">
+      <table class="sw-table">
+        <thead><tr>
+          <th>Customer</th><th>Phone</th><th>Place</th>
+          <th>Date / Time</th><th>Work Details</th><th>Status</th><th>Remark</th>
+        </tr></thead>
+        <tbody>
+          ${g.bookings.map(b => {
+            const hasRemark = b.remark && b.remark.trim();
+            const hasLoc = b.customers?.location_link;
+            return `<tr>
+              <td>
+                <strong>${escHtml(b.customers?.name||'—')}</strong>
+                <div style="font-size:11px;color:var(--slate-400)">#${b.id}</div>
+              </td>
+              <td>
+                ${b.customers?.phone
+                  ? `<a href="tel:${escHtml(b.customers.phone)}" style="color:var(--amber-dark);font-weight:700;text-decoration:none">${escHtml(b.customers.phone)}</a>`
+                  : '—'}
+              </td>
+              <td>
+                ${hasLoc
+                  ? `<a href="${escHtml(b.customers.location_link)}" target="_blank" style="color:var(--amber-dark);font-weight:600;text-decoration:none">📍 ${escHtml(b.customers?.place||'—')} ↗</a>`
+                  : `<span style="font-weight:600">${escHtml(b.customers?.place||'—')}</span>`}
+              </td>
+              <td>
+                <strong>${formatDate(b.slots?.date)}</strong>
+                <div style="font-size:11px;color:var(--slate-400)">${formatTime(b.slots?.time)}</div>
+              </td>
+              <td style="max-width:180px;font-size:12px;color:var(--slate-600)">
+                ${b.service_details ? escHtml(b.service_details.substring(0,100)+(b.service_details.length>100?'…':'')) : '—'}
+              </td>
+              <td><span class="badge badge-${b.status}">${b.status}</span></td>
+              <td>
+                <span class="remark-badge ${hasRemark?'filled':'empty'}">
+                  ${hasRemark ? escHtml(b.remark.substring(0,40)+(b.remark.length>40?'…':'')) : 'No remark'}
+                </span>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  `).join('');
+}
+
 function showView(view, el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if (el) el.classList.add('active');
-  ['today','upcoming','history'].forEach(v => {
+  ['today','upcoming','history','segwork'].forEach(v => {
     document.getElementById('view-'+v).style.display = v===view?'block':'none';
   });
   const meta = {
-    today:   ["Today's Jobs",  "Your assigned jobs for today"],
-    upcoming:["Upcoming Jobs", "Jobs in the next 7 days"],
-    history: ["Job History",   "Your completed jobs"]
+    today:   ["Today's Jobs",     "Your assigned jobs for today"],
+    upcoming:["Upcoming Jobs",    "Jobs in the next 7 days"],
+    history: ["Job History",      "Your completed jobs"],
+    segwork: ["My Work View",     "Your segment jobs sorted by date with remarks"]
   };
   document.getElementById('page-title').textContent    = meta[view][0];
   document.getElementById('page-subtitle').textContent = meta[view][1];
   if (view==='upcoming') loadUpcoming();
+  if (view==='segwork')  { document.getElementById('sw-date').value=new Date().toISOString().split('T')[0]; loadSegWork(); }
   if (view==='history') {
     const t = new Date().toISOString().split('T')[0];
     const m = new Date(Date.now()-30*86400000).toISOString().split('T')[0];
