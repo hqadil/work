@@ -306,9 +306,9 @@ async function loadBookings() {
   container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
 
   let q = db.from('bookings')
-    .select(`id,status,service_details,total_amount,advance_amount,payment_status,created_at,
+    .select(`id,status,service_details,total_amount,advance_amount,payment_status,attachment_link,created_at,
       customers(name,phone,place,address,alt_phone,location_link),
-      slots(date,time,segments(name))`)
+      slots(id,date,time,segments(name))`)
     .order('created_at', { ascending: false });
   if (status) q = q.eq('status', status);
 
@@ -342,6 +342,7 @@ async function loadBookings() {
 
 function openBookingPanel(b) {
   const balance = (Number(b.total_amount||0) - Number(b.advance_amount||0)).toFixed(0);
+  const slotId = b.slots?.id || b.slot_id || 0;
   const copyText = generateCopyBlock({
     customer_name: b.customers?.name, customer_phone: b.customers?.phone,
     customer_alt_phone: b.customers?.alt_phone, customer_place: b.customers?.place,
@@ -368,6 +369,7 @@ function openBookingPanel(b) {
          ['Alt Phone', b.customers?.alt_phone||'—'],['Place', b.customers?.place||'—'],
          ['Address', b.customers?.address||'—']
         ].map(([l,v])=>`<div class="info-row"><span class="info-label">${l}</span><span class="info-val">${v}</span></div>`).join('')}
+      ${b.customers?.location_link ? `<div class="info-row"><span class="info-label">Location</span><span class="info-val"><a href="${b.customers.location_link}" target="_blank" style="color:var(--blue-700)">📍 Open Map</a></span></div>` : ''}
     </div>
     <div class="info-block">
       <div class="info-block-title">Financials</div>
@@ -375,13 +377,19 @@ function openBookingPanel(b) {
          ['Balance', formatCurrency(balance)]
         ].map(([l,v])=>`<div class="info-row"><span class="info-label">${l}</span><span class="info-val" style="color:var(--blue-700)">${v}</span></div>`).join('')}
     </div>
+    ${b.attachment_link ? `
+    <div class="info-block">
+      <div class="info-block-title">📎 Attachment</div>
+      <a href="${b.attachment_link}" target="_blank" style="color:var(--blue-700);font-size:13px;font-weight:600;word-break:break-all">View Attached File ↗</a>
+    </div>` : ''}
     <div style="margin-bottom:8px;font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px">Copy-Paste Block</div>
     <div class="copy-block" id="copy-block-text">${copyText}</div>
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
       <button class="btn btn-primary btn-sm" onclick="copyToClipboard(document.getElementById('copy-block-text').textContent)">📋 Copy Block</button>
-      <button class="btn btn-secondary btn-sm" onclick="openReschedule(${b.id},${b.slot_id})">🔄 Reschedule</button>
+      <button class="btn btn-secondary btn-sm" onclick="openReschedule(${b.id},${slotId})">🔄 Reschedule</button>
       <button class="btn btn-sm" style="background:#fef3c7;color:#d97706;border:1px solid #fde68a" onclick="closeSidePanel();openEditBooking(${b.id})">✏️ Edit Booking</button>
-      <a href="work-report.html?booking_id=${b.id}" target="_blank" class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #86efac;text-decoration:none">📝 Work Report</a>
+      <button class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #86efac" onclick="openExtendWork(${b.id},'${(b.customers?.name||'').replace(/'/g,'')}','${(b.slots?.segments?.name||'').replace(/'/g,'')}')">📅 Extend Work</button>
+      <a href="work-report.html?booking_id=${b.id}" target="_blank" class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;text-decoration:none">📝 Work Report</a>
     </div>
     <div>
       <label class="form-label" style="font-size:12px">Update Status</label>
@@ -917,6 +925,190 @@ function showView(view) {
     </div>
   </div>
 </div>
+
+<!-- ── Extend Work Modal ──────────────────────────────────── -->
+<div class="modal-overlay" id="modal-extend-work">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">📅 Extend Work</div>
+      <button class="modal-close" onclick="closeModal('modal-extend-work')">&times;</button>
+    </div>
+
+    <!-- Context info -->
+    <div style="background:var(--blue-50);border-radius:10px;padding:12px 16px;margin-bottom:18px">
+      <div style="font-size:12px;color:var(--slate-400);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Extending job for</div>
+      <div id="ew-context" style="font-weight:700;font-size:15px;color:var(--slate-800)">—</div>
+      <div id="ew-segment" style="font-size:12px;color:var(--blue-700);font-weight:600;margin-top:2px">—</div>
+    </div>
+
+    <p style="font-size:13px;color:var(--slate-500);margin-bottom:18px">
+      This creates a new booking on a future slot for the same customer and work — continuation of today's job.
+    </p>
+
+    <div class="section-divider">Pick a Continuation Slot</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input class="form-input" type="date" id="ew-date" onchange="loadExtendSlots()"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Segment</label>
+        <select class="form-select" id="ew-seg" onchange="loadExtendSlots()">
+          <option value="">All Segments</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Available Slots</label>
+      <select class="form-select" id="ew-slot">
+        <option value="">— Pick a date first —</option>
+      </select>
+    </div>
+
+    <div class="section-divider">Continuation Details</div>
+    <div class="form-group">
+      <label class="form-label">Work Details for Next Visit *</label>
+      <textarea class="form-textarea" id="ew-work-details" placeholder="What work will continue / what's remaining…" style="min-height:70px"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount (₹)</label>
+        <input class="form-input" type="number" id="ew-amount" placeholder="0 if included in original"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Advance (₹)</label>
+        <input class="form-input" type="number" id="ew-advance" placeholder="0"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Internal Note</label>
+      <input class="form-input" type="text" id="ew-note" placeholder="e.g. Continuation from Booking #12 — Day 2"/>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-extend-work')">Cancel</button>
+      <button class="btn btn-primary" id="ew-save-btn" onclick="saveExtendWork()">📅 Create Extension Booking</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── EXTEND WORK ───────────────────────────────────────────────
+let extendBookingId = null;
+let extendCustomerId = null;
+let extendCreatedBy = null;
+
+async function openExtendWork(bookingId, customerName, segmentName) {
+  extendBookingId = bookingId;
+
+  // Fetch the booking to get customer_id, created_by, slot segment
+  const { data: bk } = await db.from('bookings')
+    .select('customer_id, created_by_user_id, slot_id, slots(segment_id)')
+    .eq('id', bookingId).single();
+  if (!bk) { toast('Could not load booking', 'error'); return; }
+  extendCustomerId = bk.customer_id;
+  extendCreatedBy  = bk.created_by_user_id;
+
+  // Pre-fill context
+  document.getElementById('ew-context').textContent  = customerName || '—';
+  document.getElementById('ew-segment').textContent  = segmentName || '—';
+
+  // Set tomorrow as default date
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  document.getElementById('ew-date').value = tomorrow;
+
+  // Populate segment dropdown, pre-select the same segment
+  const segSel = document.getElementById('ew-seg');
+  segSel.innerHTML = '<option value="">All Segments</option>';
+  const { data: segs } = await db.from('segments').select('id,name').order('name');
+  (segs||[]).forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name;
+    if (s.id == bk.slots?.segment_id) o.selected = true;
+    segSel.appendChild(o);
+  });
+
+  // Pre-fill note
+  document.getElementById('ew-note').value = `Continuation from Booking #${bookingId}`;
+  document.getElementById('ew-work-details').value = '';
+  document.getElementById('ew-amount').value = '';
+  document.getElementById('ew-advance').value = '0';
+  document.getElementById('ew-save-btn').disabled = false;
+  document.getElementById('ew-save-btn').textContent = '📅 Create Extension Booking';
+
+  await loadExtendSlots();
+  openModal('modal-extend-work');
+}
+
+async function loadExtendSlots() {
+  const date  = document.getElementById('ew-date').value;
+  const segId = document.getElementById('ew-seg').value;
+  const sel   = document.getElementById('ew-slot');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  if (!date) { sel.innerHTML = '<option value="">— Pick a date first —</option>'; return; }
+
+  let q = db.from('slots')
+    .select('id,date,time,capacity,booked_count,segments(name)')
+    .eq('date', date).order('time');
+  if (segId) q = q.eq('segment_id', segId);
+  const { data } = await q;
+
+  const available = (data||[]).filter(s => s.booked_count < s.capacity);
+  if (!available.length) {
+    sel.innerHTML = '<option value="">No available slots for this date</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">— Select a slot —</option>';
+  available.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id;
+    o.textContent = `${s.segments?.name} · ${formatTime(s.time)} (${s.capacity - s.booked_count} open)`;
+    sel.appendChild(o);
+  });
+}
+
+async function saveExtendWork() {
+  const slotId     = document.getElementById('ew-slot').value;
+  const workDetails= document.getElementById('ew-work-details').value.trim();
+  const amount     = parseFloat(document.getElementById('ew-amount').value) || 0;
+  const advance    = parseFloat(document.getElementById('ew-advance').value) || 0;
+  const note       = document.getElementById('ew-note').value.trim();
+
+  if (!slotId)      { toast('Please select a slot.','error'); return; }
+  if (!workDetails) { toast('Please describe the work for the next visit.','error'); return; }
+
+  const btn = document.getElementById('ew-save-btn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+
+  const { data: newBk, error } = await db.from('bookings').insert({
+    customer_id:       extendCustomerId,
+    slot_id:           parseInt(slotId),
+    service_details:   workDetails + (note ? `\n[Note: ${note}]` : ''),
+    total_amount:      amount,
+    advance_amount:    advance,
+    service_amount:    amount,
+    payment_status:    'pending',
+    created_by_user_id: extendCreatedBy || currentUser.id,
+    status:            'booked'
+  }).select('id').single();
+
+  if (error) { toast(error.message,'error'); btn.disabled=false; btn.textContent='📅 Create Extension Booking'; return; }
+
+  // Log the extension link
+  if (newBk?.id) {
+    await db.from('booking_extensions').insert({
+      original_booking_id:  extendBookingId,
+      extension_booking_id: newBk.id,
+      note: note || null
+    });
+  }
+
+  toast('Extension booking created! ✅');
+  closeModal('modal-extend-work');
+  closeSidePanel();
+  loadBookings();
+}
+</script>
 
 </body>
 </html>
