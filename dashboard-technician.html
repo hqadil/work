@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
 <title>Handy sQuad — Technician</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
@@ -19,662 +19,547 @@
   --green:#16a34a;--green-bg:#f0fdf4;--green-border:#86efac;
   --red:#dc2626;--red-bg:#fee2e2;
 }
-body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color:var(--slate-800);min-height:100vh}
-.app-shell{display:flex;min-height:100vh}
-.sidebar{width:240px;background:linear-gradient(180deg,#1c1917,#292524);display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;bottom:0;z-index:100}
-.sidebar-logo{padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:16px}
-.sidebar-logo .name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.4px}
-.sidebar-logo .name span{color:#fbbf24}
-.sidebar-logo .role-tag{font-size:11px;color:#fbbf24;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
-.nav-item{display:flex;align-items:center;gap:12px;padding:11px 24px;color:rgba(255,255,255,.65);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border-left:3px solid transparent;text-decoration:none}
-.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,.08);border-left-color:#fbbf24}
-.sidebar-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,.1)}
-.main{margin-left:240px;flex:1}
-.topbar{background:var(--white);border-bottom:1px solid var(--slate-200);padding:16px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
-.page-title{font-size:20px;font-weight:800;color:var(--slate-800)}
-.page-subtitle{font-size:13px;color:var(--slate-400);font-weight:500}
-.content{padding:28px}
 
-/* Welcome */
-.welcome-banner{background:linear-gradient(135deg,#1c1917,#44403c);border-radius:20px;padding:22px 28px;margin-bottom:24px;display:flex;align-items:center;gap:18px}
-.welcome-avatar{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--amber),#f97316);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0}
-.welcome-text h2{font-size:18px;font-weight:800;color:#fff}
-.welcome-text p{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px}
-.seg-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.seg-pill{background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;color:#fbbf24}
+/* ═══ MOBILE-FIRST BASE ═══════════════════════════════════════ */
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#f1f5f9;color:var(--slate-800);min-height:100vh;padding-bottom:80px}
 
-/* Stats */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
-.stat-card{background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--slate-200);display:flex;align-items:center;gap:14px}
-.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.stat-val{font-size:24px;font-weight:800;color:var(--slate-800);line-height:1}
-.stat-label{font-size:12px;color:var(--slate-400);font-weight:500;margin-top:3px}
+/* Top header bar (always visible, mobile-style) */
+.top-header{background:linear-gradient(135deg,#1c1917,#292524);padding:0;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.header-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
+.header-brand{display:flex;align-items:center;gap:10px}
+.header-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--amber),#f97316);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0}
+.header-name{font-size:15px;font-weight:800;color:#fff}
+.header-role{font-size:10px;color:#fbbf24;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.header-segs{display:flex;gap:5px;flex-wrap:wrap;padding:0 16px 10px}
+.header-seg-pill{background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.3);border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;color:#fbbf24}
 
-/* Filter */
-.filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
-.filter-bar input,.filter-bar select{padding:9px 13px;border:2px solid var(--slate-200);border-radius:10px;font-size:13px;font-family:inherit;color:var(--slate-800);background:var(--white)}
-.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--amber)}
+/* Bottom navigation (mobile) */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#fff;border-top:1px solid var(--slate-200);display:flex;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;cursor:pointer;color:var(--slate-400);transition:all .2s;border:none;background:transparent;font-family:inherit}
+.bn-item.active{color:var(--amber-dark)}
+.bn-item svg{margin-bottom:3px}
+.bn-label{font-size:10px;font-weight:700;letter-spacing:.2px}
+.bn-badge{position:absolute;top:6px;right:calc(50% - 18px);background:var(--red);color:#fff;border-radius:20px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center}
 
-/* Empty */
-.empty-state{text-align:center;padding:64px 24px}
-.empty-state .icon{font-size:52px;margin-bottom:14px}
-.empty-state h3{font-size:16px;font-weight:700;color:var(--slate-800);margin-bottom:6px}
-.empty-state p{font-size:13px;color:var(--slate-400)}
+/* Main content area */
+.content{padding:16px}
+.view{display:none}
+.view.active{display:block}
 
-/* Cards */
-.jobs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+/* Stats strip */
+.stats-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.sc{background:var(--white);border-radius:12px;padding:14px 12px;border:1px solid var(--slate-200);text-align:center}
+.sc-val{font-size:22px;font-weight:800;color:var(--slate-800)}
+.sc-lbl{font-size:10px;color:var(--slate-400);font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
 
-.job-card{background:var(--white);border-radius:18px;border:1px solid var(--slate-200);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);transition:box-shadow .2s,transform .2s}
-.job-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.09);transform:translateY(-2px)}
+/* Section header */
+.sec-hdr{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--slate-400);margin-bottom:10px;padding-left:2px}
 
-.job-strip{height:5px}
-.job-strip.booked{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
-.job-strip.completed{background:linear-gradient(90deg,#16a34a,#4ade80)}
-.job-strip.rescheduled{background:linear-gradient(90deg,#d97706,#fbbf24)}
-.job-strip.cancelled{background:linear-gradient(90deg,#dc2626,#f87171)}
-
-.job-body{padding:16px 18px}
-
-.job-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
-.job-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
-.job-name{font-size:19px;font-weight:800;color:var(--slate-800);line-height:1.15;margin-bottom:2px}
-
-/* Place — clickable if has location */
-.job-place{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--slate-500);margin-bottom:10px;cursor:default}
-.job-place.linked{color:var(--blue-700);cursor:pointer;border-bottom:1px dashed var(--blue-300)}
-.job-place.linked:hover{color:var(--blue-500)}
-
-.job-detail{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--slate-500);margin-bottom:6px}
-.job-detail svg{flex-shrink:0;margin-top:1px}
-
+/* Job card — mobile optimised */
+.job-card{background:var(--white);border-radius:16px;border:1px solid var(--slate-200);overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.jc-strip{height:4px}
+.jc-strip.booked{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.jc-strip.completed{background:linear-gradient(90deg,#16a34a,#4ade80)}
+.jc-strip.rescheduled{background:linear-gradient(90deg,#d97706,#fbbf24)}
+.jc-strip.cancelled{background:linear-gradient(90deg,#dc2626,#f87171)}
+.jc-body{padding:14px 16px}
+.jc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.jc-name{font-size:18px;font-weight:800;color:var(--slate-800);line-height:1.2}
+.jc-id{font-size:10px;color:var(--slate-400);font-weight:600;margin-top:2px}
+.jc-badges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.jc-seg{background:var(--amber-light);color:var(--amber-dark);padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.jc-status{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.jc-place{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--slate-500);margin-bottom:8px}
+.jc-place.linked{color:var(--blue-700)}
+.jc-row{display:flex;align-items:flex-start;gap:7px;font-size:13px;color:var(--slate-600);margin-bottom:6px;line-height:1.4}
+.jc-row svg{flex-shrink:0;margin-top:2px}
+.jc-row a{color:var(--blue-700);font-weight:700;text-decoration:none}
 /* Finance row */
-.job-finance{display:flex;border-top:1px solid var(--slate-100);margin-top:12px}
-.jf-cell{flex:1;padding:10px 0;text-align:center;border-right:1px solid var(--slate-100)}
-.jf-cell:last-child{border-right:none}
-.jf-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400);margin-bottom:3px}
-.jf-val{font-size:14px;font-weight:800;color:var(--slate-800)}
-.jf-val.blue{color:var(--blue-700)}
+.jc-fin{display:flex;border-top:1px solid var(--slate-100);margin-top:10px}
+.jf{flex:1;padding:10px 0;text-align:center;border-right:1px solid var(--slate-100)}
+.jf:last-child{border-right:none}
+.jf-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--slate-400);margin-bottom:2px}
+.jf-v{font-size:14px;font-weight:800;color:var(--slate-800)}
+.jf-v.bl{color:var(--blue-700)}
+/* Action buttons — large tap targets */
+.jc-actions{display:flex;border-top:1px solid var(--slate-100)}
+.ja{flex:1;padding:14px 6px;border:none;background:transparent;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--slate-500);border-right:1px solid var(--slate-100);text-decoration:none;font-family:inherit}
+.ja:last-child{border-right:none}
+.ja.call{color:var(--green)}
+.ja.map{color:var(--amber-dark)}
+.ja.rpt{color:var(--blue-700)}
+.ja.off{opacity:.3;pointer-events:none}
 
-/* Actions */
-.job-actions{display:flex;border-top:1px solid var(--slate-100)}
-.ja-btn{flex:1;padding:12px 6px;border:none;background:transparent;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--slate-500);transition:background .15s,color .15s;border-right:1px solid var(--slate-100);text-decoration:none}
-.ja-btn:last-child{border-right:none}
-.ja-btn:hover{background:var(--slate-50)}
-.ja-btn.call{color:var(--green)}
-.ja-btn.call:hover{background:var(--green-bg)}
-.ja-btn.map-btn{color:var(--amber-dark)}
-.ja-btn.map-btn:hover{background:var(--amber-light)}
-.ja-btn.rpt{color:var(--blue-700)}
-.ja-btn.rpt:hover{background:var(--blue-50)}
-.ja-btn.disabled{opacity:.3;cursor:default;pointer-events:none}
+/* Filter bar */
+.filter-row{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.filter-row input,.filter-row select{flex:1;min-width:120px;padding:10px 12px;border:2px solid var(--slate-200);border-radius:10px;font-size:13px;font-family:inherit;color:var(--slate-800);background:var(--white)}
+.filter-row input:focus,.filter-row select:focus{outline:none;border-color:var(--amber)}
+.filter-row button{padding:10px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--amber);color:#fff;font-family:inherit;white-space:nowrap}
 
-/* History table */
-.data-table-wrap{background:#fff;border-radius:16px;border:1px solid var(--slate-200);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.data-table{width:100%;border-collapse:collapse}
-.data-table thead tr{background:var(--amber-xlight)}
-.data-table th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px}
-.data-table td{padding:12px 16px;font-size:13px;border-top:1px solid var(--slate-100);vertical-align:middle}
-.data-table tr:hover td{background:var(--amber-xlight)}
+/* Seg pills */
+.seg-pills{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.seg-pill-btn{padding:7px 14px;border-radius:20px;border:2px solid var(--slate-200);font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--slate-600);transition:all .2s;font-family:inherit}
+.seg-pill-btn.on{background:var(--amber);color:#fff;border-color:var(--amber)}
 
-.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--slate-200);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-state{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--slate-400);font-size:14px;gap:10px}
-
-@media(max-width:768px){
-  .sidebar{transform:translateX(-100%)}
-  .main{margin-left:0}
-  .stats-row{grid-template-columns:1fr 1fr}
-  .jobs-grid{grid-template-columns:1fr}
-}
+/* History table — scrollable */
+.hist-wrap{overflow-x:auto;background:#fff;border-radius:14px;border:1px solid var(--slate-200)}
+.hist-table{width:100%;border-collapse:collapse;min-width:520px}
+.hist-table th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.4px;background:var(--amber-xlight);border-bottom:1px solid var(--slate-200)}
+.hist-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--slate-100);vertical-align:middle}
+.hist-table tr:last-child td{border-bottom:none}
 
 /* Segment Work View */
-.sw-section{margin-bottom:28px}
-.sw-section-header{display:flex;align-items:center;gap:12px;padding:12px 18px;margin-bottom:12px;
-  background:linear-gradient(135deg,#1c1917,#44403c);border-radius:12px;color:#fff}
-.sw-section-title{font-size:15px;font-weight:800;flex:1}
-.sw-section-count{font-size:12px;background:rgba(245,158,11,.25);border:1px solid rgba(245,158,11,.4);
-  color:#fbbf24;padding:3px 10px;border-radius:20px;font-weight:700}
-.sw-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
-  box-shadow:0 1px 4px rgba(0,0,0,.05);border:1px solid var(--slate-200)}
-.sw-table thead tr{background:var(--amber-xlight)}
-.sw-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--slate-500);
-  text-transform:uppercase;letter-spacing:.5px}
-.sw-table td{padding:11px 14px;font-size:13px;border-top:1px solid var(--slate-100);vertical-align:top}
-.sw-table tr{cursor:pointer;transition:background .15s}
-.sw-table tr:hover td{background:var(--amber-xlight)}
-.sw-seg-pill{padding:7px 16px;border-radius:20px;border:2px solid var(--slate-200);font-size:13px;
-  font-weight:600;cursor:pointer;background:#fff;color:var(--slate-600);transition:all .2s;font-family:inherit}
-.sw-seg-pill.active{background:var(--amber);color:#fff;border-color:var(--amber)}
-.sw-seg-pill:hover:not(.active){border-color:var(--amber);color:var(--amber-dark)}
-.remark-badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
-.remark-badge.empty{background:#f1f5f9;color:#94a3b8}
-.remark-badge.filled{background:var(--amber-light);color:var(--amber-dark)}
+.sw-seg-hdr{background:linear-gradient(135deg,#1c1917,#44403c);border-radius:12px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;color:#fff}
+.sw-seg-name{font-size:14px;font-weight:800}
+.sw-cnt{background:rgba(245,158,11,.25);border:1px solid rgba(245,158,11,.4);color:#fbbf24;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+
+/* Empty/loading */
+.empty{text-align:center;padding:52px 20px}
+.empty .icon{font-size:44px;margin-bottom:12px}
+.empty h3{font-size:15px;font-weight:700;margin-bottom:5px}
+.empty p{font-size:13px;color:var(--slate-400)}
+.loading{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--slate-400);font-size:14px;gap:10px}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--slate-200);border-top-color:var(--amber);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Desktop sidebar layout for larger screens */
+@media(min-width:768px){
+  body{padding-bottom:0;background:var(--slate-50)}
+  .app-shell{display:flex}
+  .top-header{display:none}
+  .bottom-nav{display:none}
+  .sidebar-desk{display:flex;flex-direction:column;width:240px;background:linear-gradient(180deg,#1c1917,#292524);position:fixed;top:0;left:0;bottom:0;z-index:100;padding:24px 0}
+  .sidebar-desk .sd-logo{padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:16px}
+  .sidebar-desk .sd-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.4px}
+  .sidebar-desk .sd-name span{color:#fbbf24}
+  .sidebar-desk .sd-role{font-size:11px;color:#fbbf24;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+  .sd-nav-item{display:flex;align-items:center;gap:12px;padding:11px 24px;color:rgba(255,255,255,.65);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border-left:3px solid transparent;text-decoration:none}
+  .sd-nav-item:hover,.sd-nav-item.active{color:#fff;background:rgba(255,255,255,.08);border-left-color:#fbbf24}
+  .sd-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,.1)}
+  .desk-main{margin-left:240px;flex:1}
+  .desk-topbar{background:var(--white);border-bottom:1px solid var(--slate-200);padding:16px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+  .desk-topbar .pt{font-size:20px;font-weight:800}
+  .desk-topbar .ps{font-size:13px;color:var(--slate-400);font-weight:500}
+  .content{padding:28px}
+  .stats-strip{grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+  .sc{padding:18px 20px}
+  .sc-val{font-size:26px}
+}
 </style>
 </head>
 <body>
-<div class="app-shell">
-  <nav class="sidebar">
-    <div class="sidebar-logo">
-      <div class="name">Handy <span>sQuad</span></div>
-      <div class="role-tag">⚙️ Technician</div>
-    </div>
-    <a class="nav-item active" href="#" onclick="showView('today',this);return false">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
-      Today's Jobs
-    </a>
-    <a class="nav-item" href="#" onclick="showView('upcoming',this);return false">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Upcoming Jobs
-    </a>
-    <a class="nav-item" href="#" onclick="showView('segwork',this);return false">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-      My Work View
-    </a>
-    <a class="nav-item" href="#" onclick="showView('history',this);return false">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      Job History
-    </a>
-    <div class="sidebar-bottom"><div id="user-badge-sidebar"></div></div>
-  </nav>
 
-  <div class="main">
-    <div class="topbar">
+<!-- ── MOBILE TOP HEADER ─────────────────────────────────── -->
+<div class="top-header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <div class="header-avatar" id="mob-avatar">T</div>
       <div>
-        <div class="page-title" id="page-title">Today's Jobs</div>
-        <div class="page-subtitle" id="page-subtitle">Your assigned jobs for today</div>
+        <div class="header-name" id="mob-name">Loading…</div>
+        <div class="header-role">Technician</div>
       </div>
-      <div id="user-badge-top"></div>
     </div>
-    <div class="content">
+    <div id="mob-user-badge"></div>
+  </div>
+  <div class="header-segs" id="mob-segs"></div>
+</div>
 
-      <div class="welcome-banner" id="welcome-banner" style="display:none">
-        <div class="welcome-avatar" id="wc-init">T</div>
-        <div class="welcome-text">
-          <h2 id="wc-name">Technician</h2>
-          <p>Your segment assignments</p>
-          <div class="seg-pills" id="wc-segs"><span class="seg-pill">Loading…</span></div>
-        </div>
-      </div>
+<!-- ── DESKTOP SIDEBAR (hidden on mobile) ───────────────── -->
+<div class="app-shell">
+<nav class="sidebar-desk" style="display:none" id="desk-sidebar">
+  <div class="sd-logo">
+    <div class="sd-name">Handy <span>sQuad</span></div>
+    <div class="sd-role">⚙️ Technician</div>
+  </div>
+  <a class="sd-nav-item active" href="#" onclick="switchView('today',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Today's Jobs
+  </a>
+  <a class="sd-nav-item" href="#" onclick="switchView('upcoming',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Upcoming Jobs
+  </a>
+  <a class="sd-nav-item" href="#" onclick="switchView('segwork',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg> My Work View
+  </a>
+  <a class="sd-nav-item" href="#" onclick="switchView('history',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Job History
+  </a>
+  <div class="sd-bottom"><div id="desk-user-badge"></div></div>
+</nav>
 
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--amber-light)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber-dark)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </div>
-          <div><div class="stat-val" id="stat-today">—</div><div class="stat-label">Today</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--blue-50)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--blue-500)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div><div class="stat-val" id="stat-upcoming">—</div><div class="stat-label">Next 7 Days</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--green-bg)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-          <div><div class="stat-val" id="stat-done">—</div><div class="stat-label">Done This Month</div></div>
-        </div>
-      </div>
+<!-- ── DESKTOP MAIN WRAPPER ─────────────────────────────── -->
+<div class="desk-main" id="desk-main" style="margin-left:0">
+  <div class="desk-topbar" id="desk-topbar" style="display:none">
+    <div><div class="pt" id="desk-page-title">Today's Jobs</div><div class="ps" id="desk-page-sub">Your assigned jobs for today</div></div>
+    <div id="desk-badge"></div>
+  </div>
 
-      <div id="view-today">
-        <div id="today-container"><div class="loading-state"><div class="spinner"></div> Loading…</div></div>
-      </div>
+  <div class="content">
 
-      <div id="view-upcoming" style="display:none">
-        <div class="filter-bar">
-          <select id="up-seg-filter"><option value="">All My Segments</option></select>
-          <button class="btn btn-secondary btn-sm" onclick="loadUpcoming()">🔄 Refresh</button>
-        </div>
-        <div id="upcoming-container"><div class="loading-state"><div class="spinner"></div></div></div>
-      </div>
-
-      <div id="view-history" style="display:none">
-        <div class="filter-bar">
-          <label style="font-size:13px;font-weight:600;color:var(--slate-600)">From:</label>
-          <input type="date" id="hist-from"/>
-          <label style="font-size:13px;font-weight:600;color:var(--slate-600)">To:</label>
-          <input type="date" id="hist-to"/>
-          <button class="btn btn-secondary btn-sm" onclick="loadHistory()">Apply</button>
-        </div>
-        <div id="history-container"></div>
-      </div>
-
-      <!-- Segment Work View -->
-      <div id="view-segwork" style="display:none">
-        <div class="filter-bar">
-          <label style="font-size:13px;font-weight:600;color:var(--slate-600)">Date:</label>
-          <input type="date" id="sw-date" onchange="loadSegWork()"/>
-          <div id="sw-seg-pills" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
-          <button class="btn btn-secondary btn-sm" onclick="loadSegWork()">🔄 Refresh</button>
-        </div>
-        <div id="segwork-container"></div>
-      </div>
-
+    <!-- Stats -->
+    <div class="stats-strip">
+      <div class="sc"><div class="sc-val" id="stat-today">—</div><div class="sc-lbl">Today</div></div>
+      <div class="sc"><div class="sc-val" id="stat-upcoming">—</div><div class="sc-lbl">Upcoming</div></div>
+      <div class="sc"><div class="sc-val" id="stat-done">—</div><div class="sc-lbl">This Month</div></div>
     </div>
+
+    <!-- TODAY -->
+    <div id="view-today" class="view active">
+      <div class="sec-hdr">Today's Jobs</div>
+      <div id="today-container"><div class="loading"><div class="spin"></div> Loading…</div></div>
+    </div>
+
+    <!-- UPCOMING -->
+    <div id="view-upcoming" class="view">
+      <div class="filter-row">
+        <select id="up-seg-filter"><option value="">All My Segments</option></select>
+        <button onclick="loadUpcoming()">🔄 Refresh</button>
+      </div>
+      <div id="upcoming-container"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+
+    <!-- MY WORK VIEW (segment grouped) -->
+    <div id="view-segwork" class="view">
+      <div class="filter-row">
+        <input type="date" id="sw-date" onchange="loadSegWork()"/>
+        <button onclick="loadSegWork()">🔄</button>
+      </div>
+      <div class="seg-pills" id="sw-seg-pills"></div>
+      <div id="segwork-container"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="view-history" class="view">
+      <div class="filter-row">
+        <input type="date" id="hist-from"/>
+        <input type="date" id="hist-to"/>
+        <button onclick="loadHistory()">Apply</button>
+      </div>
+      <div id="history-container"></div>
+    </div>
+
   </div>
 </div>
+</div>
+
+<!-- ── MOBILE BOTTOM NAV ─────────────────────────────────── -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bn-item active" id="bn-today" onclick="switchView('today',this)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span class="bn-label">Today</span>
+    <span class="bn-badge" id="bn-badge" style="display:none">0</span>
+  </button>
+  <button class="bn-item" id="bn-upcoming" onclick="switchView('upcoming',this)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span class="bn-label">Upcoming</span>
+  </button>
+  <button class="bn-item" id="bn-segwork" onclick="switchView('segwork',this)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+    <span class="bn-label">My Work</span>
+  </button>
+  <button class="bn-item" id="bn-history" onclick="switchView('history',this)">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    <span class="bn-label">History</span>
+  </button>
+</nav>
 
 <script>
 let currentUser = null;
 let mySegmentIds = [];
+let swFilter = '';
+let swData = [];
 
 (async () => {
   currentUser = await requireAuth(['technician']);
   if (!currentUser) return;
-  renderUserBadge(currentUser, 'user-badge-top');
-  renderUserBadge(currentUser, 'user-badge-sidebar');
+
+  // Desktop badge
+  renderUserBadge(currentUser, 'desk-badge');
+  renderUserBadge(currentUser, 'desk-user-badge');
+
+  // Mobile header
+  const init = currentUser.name.charAt(0).toUpperCase();
+  document.getElementById('mob-avatar').textContent = init;
+  document.getElementById('mob-name').textContent   = currentUser.name;
+
+  // Show desktop layout on wide screens
+  if (window.innerWidth >= 768) {
+    document.getElementById('desk-sidebar').style.display = 'flex';
+    document.getElementById('desk-topbar').style.display  = 'flex';
+    document.getElementById('desk-main').style.marginLeft = '240px';
+    document.getElementById('bottom-nav').style.display   = 'none';
+  }
+
   await initTechnician();
   await loadStats();
   await loadTodayJobs();
 })();
 
+// ── INIT: segments ────────────────────────────────────────────
 async function initTechnician() {
-  document.getElementById('welcome-banner').style.display = 'flex';
-  document.getElementById('wc-init').textContent = currentUser.name.charAt(0).toUpperCase();
-  document.getElementById('wc-name').textContent = currentUser.name;
-
-  // ── Try to load segments from technician_segments assignment table first ──
-  const { data: assigned, error: assignErr } = await db.from('technician_segments')
-    .select('segment_id, segments(id, name)')
+  // Try explicit technician_segments assignment first
+  const { data: assigned } = await db.from('technician_segments')
+    .select('segment_id, segments(id,name)')
     .eq('user_id', currentUser.id);
 
-  if (!assignErr && assigned?.length) {
-    // Use explicitly assigned segments
-    const segMap = {};
+  const segMap = {};
+  if (assigned?.length) {
     assigned.forEach(a => {
-      if (a.segment_id) segMap[String(a.segment_id)] = a.segments?.name || String(a.segment_id);
+      if (a.segment_id) segMap[String(a.segment_id)] = a.segments?.name || '';
     });
-    mySegmentIds = Object.keys(segMap);
-    const pillsEl = document.getElementById('wc-segs');
-    pillsEl.innerHTML = Object.values(segMap).map(n=>`<span class="seg-pill">${n}</span>`).join('');
   } else {
-    // Fallback: derive from past report_technicians
+    // Fallback: past report_technicians
     const { data: past } = await db.from('report_technicians')
       .select('work_reports(bookings(slots(segment_id,segments(name))))')
       .eq('technician_user_id', currentUser.id);
-    const segMap = {};
-    if (past?.length) {
-      past.forEach(p => {
-        const s = p.work_reports?.bookings?.slots;
-        if (s?.segment_id) segMap[String(s.segment_id)] = s.segments?.name || String(s.segment_id);
-      });
-      mySegmentIds = Object.keys(segMap);
-    }
-    const pillsEl = document.getElementById('wc-segs');
-    const names = Object.values(segMap);
-    pillsEl.innerHTML = names.length
-      ? names.map(n=>`<span class="seg-pill">${n}</span>`).join('')
-      : '<span class="seg-pill">All Segments</span>';
+    (past||[]).forEach(p => {
+      const s = p.work_reports?.bookings?.slots;
+      if (s?.segment_id) segMap[String(s.segment_id)] = s.segments?.name || '';
+    });
   }
+  mySegmentIds = Object.keys(segMap);
 
-  // All segments for filter dropdown
+  // Mobile header pills
+  const names = Object.values(segMap).filter(Boolean);
+  document.getElementById('mob-segs').innerHTML = names.length
+    ? names.map(n=>`<span class="header-seg-pill">${n}</span>`).join('')
+    : '<span class="header-seg-pill">All Segments</span>';
+
+  // Segment dropdown for upcoming filter
   const { data: allSegs } = await db.from('segments').select('id,name').order('name');
   const sel = document.getElementById('up-seg-filter');
   (allSegs||[]).forEach(s => {
-    const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; sel.appendChild(o);
+    const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; sel.appendChild(o);
   });
-
-  const pillsEl = document.getElementById('wc-segs');
-  const names = Object.values(segMap);
-  pillsEl.innerHTML = names.length
-    ? names.map(n=>`<span class="seg-pill">${n}</span>`).join('')
-    : '<span class="seg-pill">All Segments</span>';
 }
 
+// ── STATS ─────────────────────────────────────────────────────
 async function loadStats() {
-  const today      = new Date().toISOString().split('T')[0];
-  const nextWeek   = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-
+  const today     = new Date().toISOString().split('T')[0];
+  const nextWeek  = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  const monthStart= new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0];
   const { data } = await db.from('bookings').select('id,status,slots(date,segment_id)');
-  const all = data || [];
-  const mine = mySegmentIds.length
-    ? all.filter(b => mySegmentIds.includes(String(b.slots?.segment_id)))
-    : all;
-
-  document.getElementById('stat-today').textContent    = mine.filter(b=>b.slots?.date===today && ['booked','rescheduled'].includes(b.status)).length;
+  const all = data||[];
+  const mine = mySegmentIds.length ? all.filter(b=>mySegmentIds.includes(String(b.slots?.segment_id))) : all;
+  const todayCount = mine.filter(b=>b.slots?.date===today && ['booked','rescheduled'].includes(b.status)).length;
+  document.getElementById('stat-today').textContent    = todayCount;
   document.getElementById('stat-upcoming').textContent = mine.filter(b=>b.slots?.date>today && b.slots?.date<=nextWeek && ['booked','rescheduled'].includes(b.status)).length;
-  document.getElementById('stat-done').textContent     = mine.filter(b=>b.status==='completed' && b.slots?.date>=monthStart).length;
+  document.getElementById('stat-done').textContent     = mine.filter(b=>b.status==='completed'&&b.slots?.date>=monthStart).length;
+  // Badge on bottom nav
+  if (todayCount > 0) {
+    const badge = document.getElementById('bn-badge');
+    badge.textContent = todayCount; badge.style.display='block';
+  }
 }
 
+// ── FETCH BOOKINGS ────────────────────────────────────────────
 async function fetchBookings(filters={}) {
   let q = db.from('bookings').select(`
     id,status,service_details,total_amount,advance_amount,attachment_link,
     customers(name,phone,alt_phone,place,address,location_link),
     slots(id,date,time,segment_id,segments(name))
   `);
-  if (filters.date)     q = q.eq('slots.date', filters.date);
-  if (filters.dateGt)   q = q.gt('slots.date', filters.dateGt);
-  if (filters.dateLte)  q = q.lte('slots.date', filters.dateLte);
-  if (filters.dateGte)  q = q.gte('slots.date', filters.dateGte);
-  if (filters.statuses) q = q.in('status', filters.statuses);
-  if (filters.segId)    q = q.eq('slots.segment_id', filters.segId);
-  q = q.order('slots.time').limit(100);
-  const { data } = await q;
-  let jobs = data || [];
-  if (mySegmentIds.length && !filters.segId) {
-    jobs = jobs.filter(b => mySegmentIds.includes(String(b.slots?.segment_id)));
-  }
+  if (filters.date)    q=q.eq('slots.date',filters.date);
+  if (filters.dateGt)  q=q.gt('slots.date',filters.dateGt);
+  if (filters.dateLte) q=q.lte('slots.date',filters.dateLte);
+  if (filters.dateGte) q=q.gte('slots.date',filters.dateGte);
+  if (filters.statuses)q=q.in('status',filters.statuses);
+  if (filters.segId)   q=q.eq('slots.segment_id',filters.segId);
+  q=q.order('slots.time').limit(100);
+  const {data}=await q;
+  let jobs=data||[];
+  if (mySegmentIds.length && !filters.segId)
+    jobs=jobs.filter(b=>mySegmentIds.includes(String(b.slots?.segment_id)));
   return jobs;
 }
 
+// ── VIEWS ─────────────────────────────────────────────────────
 async function loadTodayJobs() {
-  const today = new Date().toISOString().split('T')[0];
-  const container = document.getElementById('today-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
-  const jobs = await fetchBookings({ date:today, statuses:['booked','rescheduled','completed'] });
-  renderCards(container, jobs, 'No jobs scheduled for today');
+  const today=new Date().toISOString().split('T')[0];
+  const c=document.getElementById('today-container');
+  c.innerHTML='<div class="loading"><div class="spin"></div> Loading…</div>';
+  const jobs=await fetchBookings({date:today,statuses:['booked','rescheduled','completed']});
+  renderCards(c,jobs,'No jobs scheduled for today','✅');
 }
 
 async function loadUpcoming() {
-  const today  = new Date().toISOString().split('T')[0];
-  const nWeek  = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-  const segId  = document.getElementById('up-seg-filter').value;
-  const container = document.getElementById('upcoming-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
-  const jobs = await fetchBookings({ dateGt:today, dateLte:nWeek, statuses:['booked','rescheduled'], segId });
-  renderCards(container, jobs, 'No upcoming jobs in the next 7 days');
+  const today=new Date().toISOString().split('T')[0];
+  const nWeek=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  const segId=document.getElementById('up-seg-filter').value;
+  const c=document.getElementById('upcoming-container');
+  c.innerHTML='<div class="loading"><div class="spin"></div></div>';
+  const jobs=await fetchBookings({dateGt:today,dateLte:nWeek,statuses:['booked','rescheduled'],segId});
+  renderCards(c,jobs,'No upcoming jobs in next 7 days','📅');
 }
-
-async function loadHistory() {
-  const from = document.getElementById('hist-from').value;
-  const to   = document.getElementById('hist-to').value;
-  const container = document.getElementById('history-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
-  let q = db.from('bookings').select(`
-    id,status,service_details,total_amount,
-    customers(name,phone,place),
-    slots(date,time,segment_id,segments(name))
-  `).eq('status','completed').order('slots.date',{ascending:false}).limit(150);
-  if (from) q = q.gte('slots.date', from);
-  if (to)   q = q.lte('slots.date', to);
-  const { data } = await q;
-  let jobs = data||[];
-  if (mySegmentIds.length) jobs = jobs.filter(b=>mySegmentIds.includes(String(b.slots?.segment_id)));
-  if (!jobs.length) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><h3>No completed jobs</h3><p>Try adjusting the date range.</p></div>';
-    return;
-  }
-  container.innerHTML = `<div class="data-table-wrap"><table class="data-table">
-    <thead><tr>${['Date','Time','Customer','Place','Segment','Amount',''].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-    <tbody>
-    ${jobs.map(b=>`<tr>
-      <td>${formatDate(b.slots?.date)}</td>
-      <td>${formatTime(b.slots?.time)}</td>
-      <td>
-        <div style="font-weight:700">${b.customers?.name||'—'}</div>
-        ${b.customers?.phone?`<a href="tel:${b.customers.phone}" style="font-size:11px;color:var(--blue-700);font-weight:600">${b.customers.phone}</a>`:''}
-      </td>
-      <td>${b.customers?.place||'—'}</td>
-      <td><span style="background:var(--amber-light);color:var(--amber-dark);padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700">${b.slots?.segments?.name||'—'}</span></td>
-      <td style="font-weight:700">${formatCurrency(b.total_amount)}</td>
-      <td><a href="work-report.html?booking_id=${b.id}" style="color:var(--blue-700);font-size:12px;font-weight:600;text-decoration:none">📝 View Report</a></td>
-    </tr>`).join('')}
-    </tbody></table></div>`;
-}
-
-function renderCards(container, jobs, emptyMsg) {
-  if (!jobs.length) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">✅</div><h3>${emptyMsg}</h3><p>Check back later.</p></div>`;
-    return;
-  }
-  container.innerHTML = `<div class="jobs-grid">${jobs.map(buildCard).join('')}</div>`;
-}
-
-function buildCard(b) {
-  const balance  = Math.max(0, Number(b.total_amount||0) - Number(b.advance_amount||0));
-  const status   = b.status || 'booked';
-  const hasLoc   = b.customers?.location_link;
-  const hasPhone = b.customers?.phone;
-  const seg      = b.slots?.segments?.name || '—';
-
-  // Place element — clickable if location link exists
-  const placeHtml = hasLoc
-    ? `<div class="job-place linked" onclick="window.open('${escHtml(b.customers.location_link)}','_blank')" title="Open in maps">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${escHtml(b.customers?.place||'—')} <span style="font-size:10px">↗</span>
-       </div>`
-    : `<div class="job-place">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${escHtml(b.customers?.place||'—')}
-       </div>`;
-
-  const callBtn = hasPhone
-    ? `<a href="tel:${escHtml(b.customers.phone)}" class="ja-btn call">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        Call
-       </a>`
-    : `<span class="ja-btn disabled">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        No phone
-       </span>`;
-
-  const mapBtn = hasLoc
-    ? `<a href="${escHtml(b.customers.location_link)}" target="_blank" class="ja-btn map-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        Map
-       </a>`
-    : `<span class="ja-btn disabled">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        No map
-       </span>`;
-
-  return `<div class="job-card">
-    <div class="job-strip ${status}"></div>
-    <div class="job-body">
-      <div class="job-top">
-        <div class="job-badges">
-          <span class="badge badge-${status}">${status}</span>
-          <span style="background:var(--amber-light);color:var(--amber-dark);padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">${escHtml(seg)}</span>
-        </div>
-        <span style="font-size:11px;color:var(--slate-400);font-weight:600">#${b.id}</span>
-      </div>
-
-      <div class="job-name">${escHtml(b.customers?.name||'—')}</div>
-      ${placeHtml}
-
-      <div class="job-detail">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span><strong>${formatDate(b.slots?.date)}</strong> &nbsp;·&nbsp; ${formatTime(b.slots?.time)}</span>
-      </div>
-
-      ${b.service_details ? `<div class="job-detail">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px">${escHtml(b.service_details.substring(0,80)+(b.service_details.length>80?'…':''))}</span>
-      </div>` : ''}
-
-      ${b.customers?.address ? `<div class="job-detail">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        <span>${escHtml(b.customers.address)}</span>
-      </div>` : ''}
-
-      ${hasPhone ? `<div class="job-detail">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        <a href="tel:${escHtml(b.customers.phone)}" style="color:var(--blue-700);font-weight:700;text-decoration:none">${escHtml(b.customers.phone)}</a>
-        ${b.customers.alt_phone ? `<span style="color:var(--slate-400);margin-left:6px">/ ${escHtml(b.customers.alt_phone)}</span>` : ''}
-      </div>` : ''}
-    </div>
-
-    <div class="job-finance">
-      <div class="jf-cell">
-        <div class="jf-label">Total</div>
-        <div class="jf-val">${formatCurrency(b.total_amount)}</div>
-      </div>
-      <div class="jf-cell">
-        <div class="jf-label">Advance</div>
-        <div class="jf-val">${formatCurrency(b.advance_amount||0)}</div>
-      </div>
-      <div class="jf-cell">
-        <div class="jf-label">Balance</div>
-        <div class="jf-val blue">${formatCurrency(balance)}</div>
-      </div>
-    </div>
-
-    <div class="job-actions">
-      ${callBtn}
-      ${mapBtn}
-      <a href="work-report.html?booking_id=${b.id}" class="ja-btn rpt">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Report
-      </a>
-    </div>
-  </div>`;
-}
-
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── SEGMENT WORK VIEW ─────────────────────────────────────────
-let swData = [];
-let swFilter = '';
 
 async function loadSegWork() {
-  const date = document.getElementById('sw-date').value;
-  const container = document.getElementById('segwork-container');
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading…</div>';
-
-  // Fetch bookings for my segments on the selected date
-  let q = db.from('bookings')
-    .select(`id,status,service_details,total_amount,advance_amount,remark,
-      customers(name,phone,place,address,alt_phone,location_link),
-      slots(id,date,time,segment_id,segments(id,name))`)
-    .order('slots(date)', { ascending: true })
-    .order('slots(time)', { ascending: true })
-    .in('status', ['booked','rescheduled','completed']);
-  if (date) q = q.eq('slots.date', date);
-
-  const { data } = await q;
-  let all = (data || []).filter(b => b.slots?.date);
-
-  // Filter to my segments if assigned
-  if (mySegmentIds.length) {
-    all = all.filter(b => mySegmentIds.includes(String(b.slots?.segment_id)));
-  }
-  swData = all;
-
-  // Build segment pills
-  const segsMap = {};
-  swData.forEach(b => {
-    const s = b.slots?.segments;
-    if (s) segsMap[s.id] = s.name;
-  });
-
-  const pillsBar = document.getElementById('sw-seg-pills');
-  pillsBar.innerHTML = `<button class="sw-seg-pill ${swFilter===''?'active':''}" onclick="setSwFilter('')">All</button>`;
-  Object.entries(segsMap).forEach(([id, name]) => {
-    pillsBar.innerHTML += `<button class="sw-seg-pill ${swFilter===String(id)?'active':''}" onclick="setSwFilter('${id}')">${name}</button>`;
-  });
-
-  renderSegWork(container);
+  const date=document.getElementById('sw-date').value;
+  const c=document.getElementById('segwork-container');
+  c.innerHTML='<div class="loading"><div class="spin"></div> Loading…</div>';
+  let q=db.from('bookings').select(`
+    id,status,service_details,total_amount,advance_amount,remark,
+    customers(name,phone,place,address,alt_phone,location_link),
+    slots(id,date,time,segment_id,segments(id,name))
+  `).order('slots(time)',{ascending:true}).in('status',['booked','rescheduled','completed']);
+  if(date) q=q.eq('slots.date',date);
+  const {data}=await q;
+  let all=(data||[]).filter(b=>b.slots?.date);
+  if(mySegmentIds.length) all=all.filter(b=>mySegmentIds.includes(String(b.slots?.segment_id)));
+  swData=all;
+  // pills
+  const segsMap={};
+  swData.forEach(b=>{const s=b.slots?.segments;if(s)segsMap[s.id]=s.name;});
+  const bar=document.getElementById('sw-seg-pills');
+  bar.innerHTML=`<button class="seg-pill-btn ${swFilter===''?'on':''}" onclick="setSwFilter('')">All</button>`
+    +Object.entries(segsMap).map(([id,name])=>`<button class="seg-pill-btn ${swFilter===String(id)?'on':''}" onclick="setSwFilter('${id}')">${name}</button>`).join('');
+  renderSegWork(c);
 }
 
-function setSwFilter(segId) {
-  swFilter = String(segId);
-  document.querySelectorAll('.sw-seg-pill').forEach(p => {
-    const isAll = p.textContent.trim() === 'All';
-    p.classList.toggle('active', isAll ? segId === '' : p.getAttribute('onclick')?.includes(`'${segId}'`));
+function setSwFilter(id){
+  swFilter=String(id);
+  document.querySelectorAll('.seg-pill-btn').forEach(p=>{
+    const isAll=p.textContent.trim()==='All';
+    p.classList.toggle('on',isAll?id==='':p.getAttribute('onclick')?.includes(`'${id}'`));
   });
   renderSegWork(document.getElementById('segwork-container'));
 }
 
-function renderSegWork(container) {
-  const filtered = swFilter
-    ? swData.filter(b => String(b.slots?.segments?.id) === swFilter)
-    : swData;
-
-  if (!filtered.length) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><h3>No jobs found</h3><p>No bookings for your segments on this date.</p></div>`;
-    return;
-  }
-
-  // Group by segment
-  const groups = {};
-  filtered.forEach(b => {
-    const seg = b.slots?.segments;
-    const key = seg?.id || 'unknown';
-    if (!groups[key]) groups[key] = { name: seg?.name || 'Unknown', bookings: [] };
+function renderSegWork(c){
+  const filtered=swFilter?swData.filter(b=>String(b.slots?.segments?.id)===swFilter):swData;
+  if(!filtered.length){c.innerHTML='<div class="empty"><div class="icon">📭</div><h3>No jobs found</h3><p>No bookings for your segments.</p></div>';return;}
+  const groups={};
+  filtered.forEach(b=>{
+    const seg=b.slots?.segments;const key=seg?.id||'?';
+    if(!groups[key])groups[key]={name:seg?.name||'Unknown',bookings:[]};
     groups[key].bookings.push(b);
   });
-
-  container.innerHTML = Object.values(groups).map(g => `
-    <div class="sw-section">
-      <div class="sw-section-header">
-        <div class="sw-section-title">🔧 ${escHtml(g.name)}</div>
-        <div class="sw-section-count">${g.bookings.length} job${g.bookings.length!==1?'s':''}</div>
-      </div>
-      <div class="data-table-wrap">
-      <table class="sw-table">
-        <thead><tr>
-          <th>Customer</th><th>Phone</th><th>Place</th>
-          <th>Date / Time</th><th>Work Details</th><th>Status</th><th>Remark</th>
-        </tr></thead>
-        <tbody>
-          ${g.bookings.map(b => {
-            const hasRemark = b.remark && b.remark.trim();
-            const hasLoc = b.customers?.location_link;
-            return `<tr>
-              <td>
-                <strong>${escHtml(b.customers?.name||'—')}</strong>
-                <div style="font-size:11px;color:var(--slate-400)">#${b.id}</div>
-              </td>
-              <td>
-                ${b.customers?.phone
-                  ? `<a href="tel:${escHtml(b.customers.phone)}" style="color:var(--amber-dark);font-weight:700;text-decoration:none">${escHtml(b.customers.phone)}</a>`
-                  : '—'}
-              </td>
-              <td>
-                ${hasLoc
-                  ? `<a href="${escHtml(b.customers.location_link)}" target="_blank" style="color:var(--amber-dark);font-weight:600;text-decoration:none">📍 ${escHtml(b.customers?.place||'—')} ↗</a>`
-                  : `<span style="font-weight:600">${escHtml(b.customers?.place||'—')}</span>`}
-              </td>
-              <td>
-                <strong>${formatDate(b.slots?.date)}</strong>
-                <div style="font-size:11px;color:var(--slate-400)">${formatTime(b.slots?.time)}</div>
-              </td>
-              <td style="max-width:180px;font-size:12px;color:var(--slate-600)">
-                ${b.service_details ? escHtml(b.service_details.substring(0,100)+(b.service_details.length>100?'…':'')) : '—'}
-              </td>
-              <td><span class="badge badge-${b.status}">${b.status}</span></td>
-              <td>
-                <span class="remark-badge ${hasRemark?'filled':'empty'}">
-                  ${hasRemark ? escHtml(b.remark.substring(0,40)+(b.remark.length>40?'…':'')) : 'No remark'}
-                </span>
-              </td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-      </div>
-    </div>
+  c.innerHTML=Object.values(groups).map(g=>`
+    <div class="sw-seg-hdr"><div class="sw-seg-name">🔧 ${esc(g.name)}</div><div class="sw-cnt">${g.bookings.length} job${g.bookings.length!==1?'s':''}</div></div>
+    ${g.bookings.map(b=>{
+      const hasLoc=b.customers?.location_link;
+      const hasRemark=b.remark&&b.remark.trim();
+      return `<div class="job-card" style="margin-bottom:10px">
+        <div class="jc-strip ${b.status}"></div>
+        <div class="jc-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+            <div class="jc-name">${esc(b.customers?.name||'—')}</div>
+            <span class="jc-status badge-${b.status}" style="font-size:10px;padding:3px 8px;border-radius:20px;background:${statusBg(b.status)};color:${statusFg(b.status)}">${b.status}</span>
+          </div>
+          ${hasLoc?`<div class="jc-place linked" onclick="window.open('${esc(b.customers.location_link)}','_blank')">📍 ${esc(b.customers?.place||'—')} ↗</div>`:`<div class="jc-place">📍 ${esc(b.customers?.place||'—')}</div>`}
+          ${b.service_details?`<div class="jc-row" style="font-size:12px;color:var(--slate-500)">${esc(b.service_details.substring(0,80)+(b.service_details.length>80?'…':''))}</div>`:''}
+          ${hasRemark?`<div style="background:var(--amber-light);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--amber-dark);margin-top:6px">💬 ${esc(b.remark)}</div>`:''}
+        </div>
+        <div class="jc-actions">
+          ${b.customers?.phone?`<a href="tel:${esc(b.customers.phone)}" class="ja call"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</a>`:''}
+          ${hasLoc?`<a href="${esc(b.customers.location_link)}" target="_blank" class="ja map"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Map</a>`:''}
+          <a href="work-report.html?booking_id=${b.id}" class="ja rpt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Report</a>
+        </div>
+      </div>`;
+    }).join('')}
   `).join('');
 }
 
-function showView(view, el) {
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  if (el) el.classList.add('active');
-  ['today','upcoming','history','segwork'].forEach(v => {
-    document.getElementById('view-'+v).style.display = v===view?'block':'none';
-  });
-  const meta = {
-    today:   ["Today's Jobs",     "Your assigned jobs for today"],
-    upcoming:["Upcoming Jobs",    "Jobs in the next 7 days"],
-    history: ["Job History",      "Your completed jobs"],
-    segwork: ["My Work View",     "Your segment jobs sorted by date with remarks"]
-  };
-  document.getElementById('page-title').textContent    = meta[view][0];
-  document.getElementById('page-subtitle').textContent = meta[view][1];
-  if (view==='upcoming') loadUpcoming();
-  if (view==='segwork')  { document.getElementById('sw-date').value=new Date().toISOString().split('T')[0]; loadSegWork(); }
-  if (view==='history') {
-    const t = new Date().toISOString().split('T')[0];
-    const m = new Date(Date.now()-30*86400000).toISOString().split('T')[0];
-    document.getElementById('hist-from').value = m;
-    document.getElementById('hist-to').value   = t;
+async function loadHistory() {
+  const from=document.getElementById('hist-from').value;
+  const to=document.getElementById('hist-to').value;
+  const c=document.getElementById('history-container');
+  c.innerHTML='<div class="loading"><div class="spin"></div></div>';
+  let q=db.from('bookings').select(`id,status,service_details,total_amount,customers(name,phone,place),slots(date,time,segment_id,segments(name))`).eq('status','completed').order('slots.date',{ascending:false}).limit(150);
+  if(from)q=q.gte('slots.date',from);
+  if(to)q=q.lte('slots.date',to);
+  const {data}=await q;
+  let jobs=data||[];
+  if(mySegmentIds.length)jobs=jobs.filter(b=>mySegmentIds.includes(String(b.slots?.segment_id)));
+  if(!jobs.length){c.innerHTML='<div class="empty"><div class="icon">📭</div><h3>No completed jobs</h3><p>Try adjusting the date range.</p></div>';return;}
+  c.innerHTML=`<div class="hist-wrap"><table class="hist-table">
+    <thead><tr><th>Date</th><th>Customer</th><th>Place</th><th>Segment</th><th>Amount</th><th></th></tr></thead>
+    <tbody>${jobs.map(b=>`<tr>
+      <td><strong>${formatDate(b.slots?.date)}</strong><div style="font-size:11px;color:var(--slate-400)">${formatTime(b.slots?.time)}</div></td>
+      <td><div style="font-weight:700">${b.customers?.name||'—'}</div>${b.customers?.phone?`<a href="tel:${b.customers.phone}" style="font-size:11px;color:var(--blue-700);font-weight:600">${b.customers.phone}</a>`:''}</td>
+      <td>${b.customers?.place||'—'}</td>
+      <td><span style="background:var(--amber-light);color:var(--amber-dark);padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700">${b.slots?.segments?.name||'—'}</span></td>
+      <td style="font-weight:700">${formatCurrency(b.total_amount)}</td>
+      <td><a href="work-report.html?booking_id=${b.id}" style="color:var(--blue-700);font-size:12px;font-weight:600;text-decoration:none">📝 Report</a></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+// ── RENDER CARDS ──────────────────────────────────────────────
+function renderCards(container,jobs,emptyMsg,emptyIcon='✅'){
+  if(!jobs.length){container.innerHTML=`<div class="empty"><div class="icon">${emptyIcon}</div><h3>${emptyMsg}</h3><p>Check back later.</p></div>`;return;}
+  container.innerHTML=jobs.map(buildCard).join('');
+}
+
+function buildCard(b){
+  const balance=Math.max(0,Number(b.total_amount||0)-Number(b.advance_amount||0));
+  const status=b.status||'booked';
+  const hasLoc=b.customers?.location_link;
+  const hasPhone=b.customers?.phone;
+  const seg=b.slots?.segments?.name||'—';
+  const placeHtml=hasLoc
+    ?`<div class="jc-place linked" onclick="window.open('${esc(b.customers.location_link)}','_blank')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(b.customers?.place||'—')} <span style="font-size:10px">↗</span></div>`
+    :`<div class="jc-place"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(b.customers?.place||'—')}</div>`;
+  return `<div class="job-card">
+    <div class="jc-strip ${status}"></div>
+    <div class="jc-body">
+      <div class="jc-top">
+        <div>
+          <div class="jc-badges">
+            <span class="jc-seg">${esc(seg)}</span>
+            <span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:${statusBg(status)};color:${statusFg(status)}">${status}</span>
+          </div>
+          <div class="jc-name">${esc(b.customers?.name||'—')}</div>
+        </div>
+        <div class="jc-id">#${b.id}</div>
+      </div>
+      ${placeHtml}
+      <div class="jc-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span><strong>${formatDate(b.slots?.date)}</strong> · ${formatTime(b.slots?.time)}</span></div>
+      ${b.service_details?`<div class="jc-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>${esc(b.service_details.substring(0,80)+(b.service_details.length>80?'…':''))}</span></div>`:''}
+      ${b.customers?.address?`<div class="jc-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>${esc(b.customers.address)}</span></div>`:''}
+      ${hasPhone?`<div class="jc-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><a href="tel:${esc(b.customers.phone)}">${esc(b.customers.phone)}</a>${b.customers.alt_phone?` / ${esc(b.customers.alt_phone)}`:''}</div>`:''}
+    </div>
+    <div class="jc-fin">
+      <div class="jf"><div class="jf-l">Total</div><div class="jf-v">${formatCurrency(b.total_amount)}</div></div>
+      <div class="jf"><div class="jf-l">Advance</div><div class="jf-v">${formatCurrency(b.advance_amount||0)}</div></div>
+      <div class="jf"><div class="jf-l">Balance</div><div class="jf-v bl">${formatCurrency(balance)}</div></div>
+    </div>
+    <div class="jc-actions">
+      ${hasPhone?`<a href="tel:${esc(b.customers.phone)}" class="ja call"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</a>`:`<span class="ja off"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> No phone</span>`}
+      ${hasLoc?`<a href="${esc(b.customers.location_link)}" target="_blank" class="ja map"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Map</a>`:`<span class="ja off"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> No map</span>`}
+      <a href="work-report.html?booking_id=${b.id}" class="ja rpt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Report</a>
+    </div>
+  </div>`;
+}
+
+// ── SWITCH VIEW ───────────────────────────────────────────────
+function switchView(view,el){
+  // Mobile bottom nav active state
+  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('bn-'+view);
+  if(btn)btn.classList.add('active');
+  // Desktop sidebar active state
+  document.querySelectorAll('.sd-nav-item').forEach(n=>n.classList.remove('active'));
+  if(el&&el.classList.contains('sd-nav-item'))el.classList.add('active');
+  // Show/hide views
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view)?.classList.add('active');
+  // Desktop topbar title
+  const titles={today:["Today's Jobs","Your assigned jobs for today"],upcoming:["Upcoming","Jobs in next 7 days"],segwork:["My Work View","Segment jobs by date"],history:["Job History","Completed jobs"]};
+  document.getElementById('desk-page-title').textContent=titles[view]?.[0]||view;
+  document.getElementById('desk-page-sub').textContent=titles[view]?.[1]||'';
+  // Load data
+  if(view==='upcoming')loadUpcoming();
+  if(view==='segwork'){document.getElementById('sw-date').value=new Date().toISOString().split('T')[0];loadSegWork();}
+  if(view==='history'){
+    const t=new Date().toISOString().split('T')[0];
+    const m=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+    document.getElementById('hist-from').value=m;
+    document.getElementById('hist-to').value=t;
     loadHistory();
   }
 }
+
+function statusBg(s){return s==='completed'?'#dcfce7':s==='booked'?'#dbeafe':s==='rescheduled'?'#fef3c7':'#fee2e2'}
+function statusFg(s){return s==='completed'?'#16a34a':s==='booked'?'#1d4ed8':s==='rescheduled'?'#d97706':'#dc2626'}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 </script>
 </body>
 </html>
