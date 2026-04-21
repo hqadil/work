@@ -115,24 +115,20 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
 .eod-note-area { width:100%;padding:10px 14px;border:2px solid var(--slate-200);border-radius:10px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px;color:var(--slate-800);background:var(--slate-50);box-sizing:border-box; }
 .eod-note-area:focus { outline:none;border-color:var(--blue-500);background:#fff; }
 /* ── Segment Work View ── */
-.seg-section { margin-bottom:28px; }
-.seg-section-header { display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px 18px;
-  background:linear-gradient(135deg,var(--blue-900),var(--blue-700));border-radius:12px;color:#fff; }
-.seg-section-title { font-size:16px;font-weight:800;flex:1; }
-.seg-section-count { font-size:12px;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:20px;font-weight:700; }
-.seg-work-table { width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05); }
-.seg-work-table thead tr { background:var(--blue-50); }
-.seg-work-table th { padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.5px; }
-.seg-work-table td { padding:11px 14px;font-size:13px;border-top:1px solid var(--slate-100);vertical-align:top; }
-.seg-work-table tr { cursor:pointer;transition:background .15s; }
-.seg-work-table tr:hover td { background:var(--blue-50); }
-.remark-chip { display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600; }
-.remark-chip.empty { background:#f1f5f9;color:#94a3b8; }
-.remark-chip.has-remark { background:#fef3c7;color:#b45309; }
-.seg-filter-pill { padding:7px 16px;border-radius:20px;border:2px solid var(--slate-200);font-size:13px;font-weight:600;
-  cursor:pointer;background:#fff;color:var(--slate-600);transition:all .2s;font-family:inherit; }
-.seg-filter-pill.active { background:var(--blue-700);color:#fff;border-color:var(--blue-700); }
-.seg-filter-pill:hover:not(.active) { border-color:var(--blue-500);color:var(--blue-700); }
+.seg-card {
+  background:#fff;border:2px solid var(--slate-200);border-radius:14px;
+  padding:14px 20px;cursor:pointer;transition:all .2s;min-width:120px;text-align:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.seg-card:hover { border-color:var(--blue-500);transform:translateY(-2px);box-shadow:0 4px 14px rgba(59,130,246,.15); }
+.seg-card.active { background:linear-gradient(135deg,var(--blue-700),var(--blue-500));border-color:var(--blue-700);
+  color:#fff;box-shadow:0 4px 16px rgba(59,130,246,.35); }
+.seg-card-name { font-size:13px;font-weight:700;color:inherit; }
+.seg-card.active .seg-card-name { color:#fff; }
+.seg-card:not(.active) .seg-card-name { color:var(--slate-700); }
+.seg-card-count { font-size:22px;font-weight:800;margin-top:4px;color:inherit; }
+.seg-card.active .seg-card-count { color:#fff; }
+.seg-card:not(.active) .seg-card-count { color:var(--blue-700); }
 @media print {
   .sidebar,.topbar,.filter-bar,.no-print { display:none!important; }
   .main { margin-left:0!important; }
@@ -219,20 +215,25 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
         <div id="reports-table"></div>
       </div>
 
-      <!-- EOD REPORT VIEW -->
-      <div id="view-eod" style="display:none">
-
       <!-- SEGMENT WORK VIEW -->
       <div id="view-segment" style="display:none">
-        <div class="filter-bar">
-          <input type="date" id="seg-view-date" onchange="loadSegmentView()"/>
-          <div id="seg-pills-bar" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
-          <button class="btn btn-primary btn-sm" onclick="loadSegmentView()">🔄 Refresh</button>
+        <!-- Date range bar -->
+        <div class="filter-bar" style="margin-bottom:14px">
+          <label style="font-size:13px;font-weight:600;color:var(--slate-600)">From:</label>
+          <input type="date" id="seg-date-from"/>
+          <label style="font-size:13px;font-weight:600;color:var(--slate-600)">To:</label>
+          <input type="date" id="seg-date-to"/>
+          <button class="btn btn-primary btn-sm" onclick="loadSegmentView()">🔍 Apply</button>
+          <button class="btn btn-secondary btn-sm" onclick="setSegToday()">Today</button>
         </div>
+        <!-- Segment cards -->
+        <div id="seg-cards-bar" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px"></div>
+        <!-- Table -->
         <div id="segment-view-container"></div>
       </div>
 
-      <!-- EOD REPORT VIEW (real) -->
+      <!-- EOD REPORT VIEW -->
+      <div id="view-eod" style="display:none">
         <div class="filter-bar">
           <label style="font-size:13px;font-weight:600;color:var(--slate-600)">Date:</label>
           <input type="date" id="eod-date"/>
@@ -901,7 +902,13 @@ function showView(view) {
   if (view==='bookings') { document.getElementById('bk-date').value=new Date().toISOString().split('T')[0]; loadBookings(); }
   if (view==='reports')  { document.getElementById('rep-date').value=new Date().toISOString().split('T')[0]; loadReports(); }
   if (view==='eod')      { document.getElementById('eod-date').value=new Date().toISOString().split('T')[0]; loadEOD(); }
-  if (view==='segment')  { document.getElementById('seg-view-date').value=new Date().toISOString().split('T')[0]; loadSegmentView(); }
+  if (view==='segment')  {
+    const t = new Date().toISOString().split('T')[0];
+    document.getElementById('seg-date-from').value = t;
+    document.getElementById('seg-date-to').value   = t;
+    svActiveSegId = '';
+    loadSegmentView();
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1381,118 +1388,184 @@ function printEOD() {
 
 <script>
 // ── SEGMENT WORK VIEW ─────────────────────────────────────────
-let segViewData = []; // all bookings for current date
-let segViewFilter = ''; // active segment id filter ('') = all
+let svAllBookings = [];   // raw fetch
+let svActiveSegId = '';   // '' = all
+
+function setSegToday() {
+  const t = new Date().toISOString().split('T')[0];
+  document.getElementById('seg-date-from').value = t;
+  document.getElementById('seg-date-to').value   = t;
+  loadSegmentView();
+}
 
 async function loadSegmentView() {
-  const date = document.getElementById('seg-view-date').value;
+  const from = document.getElementById('seg-date-from').value;
+  const to   = document.getElementById('seg-date-to').value;
   const container = document.getElementById('segment-view-container');
   container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Loading…</div>';
+  document.getElementById('seg-cards-bar').innerHTML = '';
 
+  // Fetch all bookings in range — no status filter, all come through
   let q = db.from('bookings')
-    .select(`id,status,service_details,total_amount,advance_amount,payment_status,attachment_link,
-      remark,
-      customers(name,phone,place,address,alt_phone,location_link),
-      slots(id,date,time,segment_id,segments(id,name))`)
+    .select(`id, status, service_details, total_amount, advance_amount,
+             payment_status, attachment_link, remark,
+             customers(name, phone, place, address, alt_phone, location_link),
+             slots!inner(id, date, time, segment_id, segments(id, name))`)
     .order('slots(date)', { ascending: true })
-    .order('slots(time)', { ascending: true })
-    .in('status', ['booked','rescheduled','completed']);
-  if (date) q = q.eq('slots.date', date);
+    .order('slots(time)', { ascending: true });
 
-  const { data } = await q;
-  segViewData = (data || []).filter(b => b.slots?.date); // drop nulls from join
+  if (from) q = q.gte('slots.date', from);
+  if (to)   q = q.lte('slots.date', to);
 
-  // Build segment pills
-  const segsMap = {};
-  segViewData.forEach(b => {
-    const s = b.slots?.segments;
-    if (s) segsMap[s.id] = s.name;
-  });
-  const pillsBar = document.getElementById('seg-pills-bar');
-  pillsBar.innerHTML = `<button class="seg-filter-pill ${segViewFilter===''?'active':''}" onclick="setSegViewFilter('')">All</button>`;
-  Object.entries(segsMap).forEach(([id, name]) => {
-    pillsBar.innerHTML += `<button class="seg-filter-pill ${segViewFilter===String(id)?'active':''}" onclick="setSegViewFilter('${id}')">${name}</button>`;
-  });
+  const { data, error } = await q;
 
-  renderSegmentView(container);
-}
-
-function setSegViewFilter(segId) {
-  segViewFilter = String(segId);
-  document.querySelectorAll('.seg-filter-pill').forEach(p => {
-    p.classList.toggle('active', p.textContent === 'All' ? segId === '' : p.onclick.toString().includes(`'${segId}'`));
-  });
-  // Re-render pills cleanly
-  const pillsBar = document.getElementById('seg-pills-bar');
-  pillsBar.querySelectorAll('.seg-filter-pill').forEach(p => {
-    const isAll = p.textContent.trim() === 'All';
-    p.classList.toggle('active', isAll ? segId === '' : p.getAttribute('onclick')?.includes(`'${segId}'`));
-  });
-  renderSegmentView(document.getElementById('segment-view-container'));
-}
-
-function renderSegmentView(container) {
-  const filtered = segViewFilter
-    ? segViewData.filter(b => String(b.slots?.segments?.id) === segViewFilter)
-    : segViewData;
-
-  if (!filtered.length) {
-    container.innerHTML = '<div class="loading-overlay">No bookings found for this date/filter.</div>';
+  if (error) {
+    container.innerHTML = `<div class="loading-overlay" style="color:#dc2626">Error: ${error.message}</div>`;
     return;
   }
 
-  // Group by segment
-  const groups = {};
-  filtered.forEach(b => {
-    const seg = b.slots?.segments;
-    const key = seg?.id || 'unknown';
-    if (!groups[key]) groups[key] = { name: seg?.name || 'Unknown', bookings: [] };
-    groups[key].bookings.push(b);
+  svAllBookings = (data || []).filter(b => b.slots?.date);
+
+  if (!svAllBookings.length) {
+    container.innerHTML = '<div class="loading-overlay">No bookings found for this date range.</div>';
+    renderSegCards([]);
+    return;
+  }
+
+  // Build unique segments from results
+  const segsMap = {};
+  svAllBookings.forEach(b => {
+    const s = b.slots?.segments;
+    if (s?.id) segsMap[s.id] = s.name;
   });
 
-  container.innerHTML = Object.values(groups).map(g => `
-    <div class="seg-section">
-      <div class="seg-section-header">
-        <div class="seg-section-title">🔧 ${g.name}</div>
-        <div class="seg-section-count">${g.bookings.length} booking${g.bookings.length!==1?'s':''}</div>
-      </div>
-      <div class="data-table-wrap">
-      <table class="seg-work-table">
-        <thead><tr>
-          <th>Customer</th><th>Phone</th><th>Place</th>
-          <th>Date / Time</th><th>Work Details</th><th>Status</th><th>Remark</th>
-        </tr></thead>
+  renderSegCards(Object.entries(segsMap));
+  renderSegTable(container);
+}
+
+function renderSegCards(entries) {
+  const bar = document.getElementById('seg-cards-bar');
+  const allCount = svAllBookings.length;
+  bar.innerHTML = `
+    <div class="seg-card ${svActiveSegId===''?'active':''}" onclick="svSetFilter('')">
+      <div class="seg-card-name">All Segments</div>
+      <div class="seg-card-count">${allCount}</div>
+    </div>
+    ${entries.map(([id, name]) => {
+      const cnt = svAllBookings.filter(b => String(b.slots?.segments?.id) === String(id)).length;
+      return `<div class="seg-card ${svActiveSegId===String(id)?'active':''}" onclick="svSetFilter('${id}')">
+        <div class="seg-card-name">${name}</div>
+        <div class="seg-card-count">${cnt}</div>
+      </div>`;
+    }).join('')}`;
+}
+
+function svSetFilter(segId) {
+  svActiveSegId = String(segId);
+  // Update active state on cards
+  document.querySelectorAll('.seg-card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.seg-card').forEach(c => {
+    const onclick = c.getAttribute('onclick') || '';
+    if (segId === '' && onclick.includes("''")) c.classList.add('active');
+    else if (segId !== '' && onclick.includes(`'${segId}'`)) c.classList.add('active');
+  });
+  renderSegTable(document.getElementById('segment-view-container'));
+}
+
+function renderSegTable(container) {
+  const list = svActiveSegId
+    ? svAllBookings.filter(b => String(b.slots?.segments?.id) === svActiveSegId)
+    : svAllBookings;
+
+  if (!list.length) {
+    container.innerHTML = '<div class="loading-overlay">No bookings for this segment.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="data-table-wrap" style="overflow-x:auto">
+      <table class="data-table" id="seg-main-table">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Place</th>
+            <th>Date</th>
+            <th>Segment</th>
+            <th>Work Details</th>
+            <th>Status</th>
+            <th>Remark</th>
+          </tr>
+        </thead>
         <tbody>
-          ${g.bookings.map(b => {
+          ${list.map(b => {
             const hasRemark = b.remark && b.remark.trim();
-            return `<tr onclick="openBookingPanelById(${b.id})">
-              <td><strong>${b.customers?.name||'—'}</strong><div style="font-size:11px;color:var(--slate-400)">#${b.id}</div></td>
-              <td><a href="tel:${b.customers?.phone||''}" onclick="event.stopPropagation()" style="color:var(--blue-700);font-weight:600;text-decoration:none">${b.customers?.phone||'—'}</a></td>
-              <td style="font-weight:600">${b.customers?.place||'—'}</td>
-              <td><strong>${formatDate(b.slots?.date)}</strong><br><span style="color:var(--slate-400)">${formatTime(b.slots?.time)}</span></td>
-              <td style="max-width:180px;font-size:12px;color:var(--slate-600)">${b.service_details ? b.service_details.substring(0,100)+(b.service_details.length>100?'…':'') : '—'}</td>
+            const safeRemark = (b.remark||'').replace(/'/g,"\\'").replace(/\n/g,' ');
+            return `<tr style="cursor:pointer" onclick="openBookingPanelById(${b.id})">
+              <td>
+                <div style="font-weight:700">${b.customers?.name||'—'}</div>
+                <div style="font-size:11px;color:var(--slate-400)">#${b.id}</div>
+              </td>
+              <td>
+                <a href="tel:${b.customers?.phone||''}" onclick="event.stopPropagation()"
+                   style="color:var(--blue-700);font-weight:600;text-decoration:none">
+                  ${b.customers?.phone||'—'}
+                </a>
+                ${b.customers?.alt_phone ? `<div style="font-size:11px;color:var(--slate-400)">${b.customers.alt_phone}</div>` : ''}
+              </td>
+              <td style="font-weight:600">
+                ${b.customers?.location_link
+                  ? `<a href="${b.customers.location_link}" target="_blank" onclick="event.stopPropagation()"
+                       style="color:var(--blue-700);text-decoration:none">📍 ${b.customers?.place||'—'}</a>`
+                  : (b.customers?.place||'—')}
+              </td>
+              <td>
+                <strong>${formatDate(b.slots?.date)}</strong>
+                <div style="font-size:11px;color:var(--slate-400)">${formatTime(b.slots?.time)}</div>
+              </td>
+              <td>
+                <span style="background:var(--blue-100);color:var(--blue-700);padding:3px 9px;
+                  border-radius:6px;font-size:11px;font-weight:700">
+                  ${b.slots?.segments?.name||'—'}
+                </span>
+              </td>
+              <td style="max-width:200px;font-size:12px;color:var(--slate-600)">
+                ${b.service_details
+                  ? b.service_details.substring(0,100)+(b.service_details.length>100?'…':'')
+                  : '<span style="color:var(--slate-300)">—</span>'}
+              </td>
               <td><span class="badge badge-${b.status}">${b.status}</span></td>
-              <td onclick="event.stopPropagation()">
-                <div style="display:flex;align-items:center;gap:6px">
-                  <span class="remark-chip ${hasRemark?'has-remark':'empty'}">${hasRemark ? b.remark.substring(0,30)+(b.remark.length>30?'…':'') : 'No remark'}</span>
-                  <button class="btn btn-sm btn-secondary" style="padding:4px 10px;font-size:11px" onclick="openRemarkModal(${b.id},'${(b.remark||'').replace(/'/g,'\\\'').replace(/\n/g,' ')}')">✏️</button>
+              <td onclick="event.stopPropagation()" style="min-width:160px">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  ${hasRemark
+                    ? `<span style="font-size:12px;color:var(--slate-700);background:#fef3c7;padding:4px 10px;
+                         border-radius:6px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+                         display:block" title="${(b.remark||'').replace(/"/g,'&quot;')}">${b.remark}</span>`
+                    : `<span style="font-size:11px;color:var(--slate-300);font-style:italic">No remark</span>`}
+                  <button onclick="openRemarkModal(${b.id},'${safeRemark}')"
+                    style="background:none;border:1px solid var(--slate-200);border-radius:6px;
+                      padding:3px 8px;font-size:11px;cursor:pointer;color:var(--slate-500);
+                      transition:all .15s;white-space:nowrap"
+                    onmouseover="this.style.borderColor='var(--blue-500)';this.style.color='var(--blue-700)'"
+                    onmouseout="this.style.borderColor='var(--slate-200)';this.style.color='var(--slate-500)'">
+                    ✏️ ${hasRemark ? 'Edit' : 'Add'}
+                  </button>
                 </div>
               </td>
             </tr>`;
           }).join('')}
         </tbody>
       </table>
-      </div>
-    </div>
-  `).join('');
+    </div>`;
 }
 
-// Fetch a single booking by ID and open the side panel
+// Fetch booking by ID then open side panel
 async function openBookingPanelById(id) {
   const { data: b } = await db.from('bookings')
-    .select(`id,status,service_details,total_amount,advance_amount,payment_status,attachment_link,remark,
-      customers(name,phone,place,address,alt_phone,location_link),
-      slots(id,date,time,segment_id,segments(id,name))`)
+    .select(`id,status,service_details,total_amount,advance_amount,payment_status,
+             attachment_link,remark,
+             customers(name,phone,place,address,alt_phone,location_link),
+             slots(id,date,time,segment_id,segments(id,name))`)
     .eq('id', id).single();
   if (b) openBookingPanel(b);
 }
@@ -1508,16 +1581,15 @@ function openRemarkModal(bookingId, currentRemark) {
 
 async function saveRemark() {
   const text = document.getElementById('remark-text').value.trim();
-  const btn = document.getElementById('remark-save-btn');
+  const btn  = document.getElementById('remark-save-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   const { error } = await db.from('bookings').update({ remark: text || null }).eq('id', remarkBookingId);
   if (error) { toast(error.message, 'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
   toast('Remark saved!');
   closeModal('modal-remark');
   btn.disabled=false; btn.textContent='💾 Save';
-  // Refresh the view
-  const currentView = document.getElementById('view-segment').style.display !== 'none' ? 'segment' : 'bookings';
-  if (currentView === 'segment') loadSegmentView();
+  // Refresh whichever view is active
+  if (document.getElementById('view-segment').style.display !== 'none') loadSegmentView();
   else loadBookings();
 }
 
