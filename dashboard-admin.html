@@ -263,8 +263,8 @@ async function loadReportingData() {
   let q = db.from('work_reports').select(`
     id,work_status,final_amount,material_cost,payment_mode,site_in,work_started_time,site_out,
     distance,executed_date,advance,supervisor,notes,issues_logged,
-    bookings(id,service_details,total_amount,advance_amount,customers(name,phone,place,address),slots(date,segments(name))),
-    report_technicians(users(name))
+    bookings(id,service_details,total_amount,advance_amount,customers(name,phone,place,address),slots(date,time,segments(name))),
+    report_technicians(role_on_job,users(name))
   `).order('executed_date', { ascending:false }).limit(500);
   if (status) q = q.eq('work_status', status);
   if (from) q = q.gte('executed_date', from);
@@ -278,7 +278,7 @@ async function loadReportingData() {
     <thead><tr>${['Report#','Booking#','Customer','Place','Segment','Date','Site In','Site Out','Technicians','Final Amt','Material','Distance','Mode','Status'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>
     ${reportingData.map(r=>{
-      const techs = (r.report_technicians||[]).map(t=>t.users?.name||'').filter(Boolean).join(', ');
+      const techs = extractTechs(r);
       return `<tr>
         <td style="font-weight:700;color:var(--blue-700)">#${r.id}</td>
         <td>#${r.bookings?.id||'—'}</td>
@@ -286,8 +286,8 @@ async function loadReportingData() {
         <td>${r.bookings?.customers?.place||'—'}</td>
         <td>${r.bookings?.slots?.segments?.name||'—'}</td>
         <td>${formatDate(r.executed_date||r.bookings?.slots?.date)}</td>
-        <td>${r.site_in ? formatTime(r.site_in) : '—'}</td>
-        <td>${r.site_out ? formatTime(r.site_out) : '—'}</td>
+        <td>${r.site_in?formatTime(r.site_in):'—'}</td>
+        <td>${r.site_out?formatTime(r.site_out):'—'}</td>
         <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${techs}">${techs||'—'}</td>
         <td style="font-weight:600">${formatCurrency(r.final_amount)}</td>
         <td>${formatCurrency(r.material_cost)}</td>
@@ -299,53 +299,48 @@ async function loadReportingData() {
     </tbody></table></div>`;
 }
 
+// Extract technician display: linked users first, then [STAFF:] prefix from notes
+function extractTechs(r) {
+  const linked = (r.report_technicians||[]).map(t=>t.users?.name||'').filter(Boolean);
+  if (linked.length) return linked.join(', ');
+  const m = (r.notes||'').match(/^\[STAFF:\s*([^\]]+)\]/);
+  return m ? m[1].trim() : '';
+}
+
+// Strip [STAFF:] prefix from notes for display
+function cleanNotes(n) {
+  return (n||'').replace(/^\[STAFF:[^\]]+\]\n?/,'').trim();
+}
+
 function exportCSV() {
   if (!reportingData.length) { toast('No data to export.','warning'); return; }
   const headers = [
-    'Report#','Booking#','Customer','Phone','Place','Address',
-    'Segment','Execution Date','Site In','Work Started','Site Out',
+    'Report#','Booking#','Customer','Phone','Place','Address','Segment',
+    'Execution Date','Slot Date','Slot Time','Site In','Work Started','Site Out',
     'Technicians','Supervisor',
-    'Booking Amount','Final Amount','Advance','Material Cost','Balance',
-    'Payment Mode','Distance (km)',
-    'Work Status','Notes','Issues Logged'
+    'Booking Amt','Final Amt','Advance','Material','Balance',
+    'Payment Mode','Distance (km)','Work Status','Notes','Issues'
   ];
   const rows = reportingData.map(r=>{
-    const techs = (r.report_technicians||[]).map(t=>t.users?.name||'').filter(Boolean).join(' | ');
-    const bookingAmt = r.bookings?.total_amount || 0;
-    const advance = r.advance || r.bookings?.advance_amount || 0;
-    const balance = (Number(bookingAmt) - Number(advance)).toFixed(0);
-    return [
-      r.id,
-      r.bookings?.id||'',
-      r.bookings?.customers?.name||'',
-      r.bookings?.customers?.phone||'',
-      r.bookings?.customers?.place||'',
-      r.bookings?.customers?.address||'',
-      r.bookings?.slots?.segments?.name||'',
-      r.executed_date||r.bookings?.slots?.date||'',
-      r.site_in||'',
-      r.work_started_time||'',
-      r.site_out||'',
-      techs,
-      r.supervisor||'',
-      bookingAmt,
-      r.final_amount||0,
-      advance,
-      r.material_cost||0,
-      balance,
-      r.payment_mode||'',
-      r.distance||0,
-      r.work_status||'',
-      (r.notes||'').replace(/\n/g,' '),
-      (r.issues_logged||'').replace(/\n/g,' ')
-    ];
+    const techs = extractTechs(r);
+    const bAmt=Number(r.bookings?.total_amount||0);
+    const adv=Number(r.advance||r.bookings?.advance_amount||0);
+    return [r.id,r.bookings?.id||'',r.bookings?.customers?.name||'',r.bookings?.customers?.phone||'',
+      r.bookings?.customers?.place||'',r.bookings?.customers?.address||'',
+      r.bookings?.slots?.segments?.name||'',r.executed_date||'',
+      r.bookings?.slots?.date||'',r.bookings?.slots?.time||'',
+      r.site_in||'',r.work_started_time||'',r.site_out||'',
+      techs,r.supervisor||'',
+      bAmt,r.final_amount||0,adv,r.material_cost||0,(bAmt-adv).toFixed(0),
+      r.payment_mode||'',r.distance||0,r.work_status||'',
+      cleanNotes(r.notes),(r.issues_logged||'').replace(/\n/g,' ')];
   });
-  const csv = [headers, ...rows].map(r => r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url;
-  a.download = `handysquad_daily_report_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click(); URL.revokeObjectURL(url);
+  const csv=[headers,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`handysquad_report_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();URL.revokeObjectURL(url);
   toast('CSV downloaded!');
 }
 
@@ -365,7 +360,10 @@ async function loadUsers() {
       <td style="color:var(--slate-500)">${u.email}</td>
       <td><span class="badge" style="background:${roleColors[u.role]||'#6b7280'}1a;color:${roleColors[u.role]||'#6b7280'}">${u.role}</span></td>
       <td>${formatDate(u.created_at)}</td>
-      <td><button class="row-btn danger" onclick="changeRole('${u.id}','${u.name}','${u.role}')">Change Role</button></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="row-btn danger" onclick="changeRole('${u.id}','${u.name}','${u.role}')">Change Role</button>
+        ${u.role === 'technician' ? `<button class="row-btn view" onclick="openSegAssign('${u.id}','${u.name.replace(/'/g,"\\'")}')">🔧 Segments</button>` : ''}
+      </td>
     </tr>`).join('')}
     </tbody></table></div>`;
 }
@@ -435,6 +433,70 @@ function showView(view) {
     loadReportingData();
   }
 }
+
+// ── Technician Segment Assignment ─────────────────────────────
+let segAssignUserId   = null;
+let segAssignUserName = '';
+
+async function openSegAssign(userId, userName) {
+  segAssignUserId   = userId;
+  segAssignUserName = userName;
+  document.getElementById('admin-sa-name').textContent = userName;
+  const container = document.getElementById('admin-sa-list');
+  container.innerHTML = '<div style="padding:16px;color:#94a3b8">Loading…</div>';
+  openModal('modal-admin-seg-assign');
+
+  const [segsRes, assignedRes] = await Promise.all([
+    db.from('segments').select('id,name').order('name'),
+    db.from('technician_segments').select('segment_id').eq('user_id', userId)
+  ]);
+  const allSegs     = segsRes.data || [];
+  const assignedIds = new Set((assignedRes.data||[]).map(a=>String(a.segment_id)));
+
+  container.innerHTML = allSegs.map(s => `
+    <label style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9;cursor:pointer">
+      <input type="checkbox" value="${s.id}" ${assignedIds.has(String(s.id))?'checked':''}
+        style="width:16px;height:16px;accent-color:#3b82f6;cursor:pointer" class="admin-sa-cb"/>
+      <span style="font-size:14px;font-weight:600;color:#1e293b">${s.name}</span>
+    </label>`).join('');
+}
+
+async function saveAdminSegAssign() {
+  const btn = document.getElementById('admin-sa-save');
+  btn.disabled=true; btn.textContent='Saving…';
+
+  const checked = [...document.querySelectorAll('.admin-sa-cb:checked')].map(el=>parseInt(el.value));
+
+  await db.from('technician_segments').delete().eq('user_id', segAssignUserId);
+  if (checked.length) {
+    const { error } = await db.from('technician_segments').insert(
+      checked.map(sid=>({ user_id: segAssignUserId, segment_id: sid }))
+    );
+    if (error) { toast(error.message,'error'); btn.disabled=false; btn.textContent='💾 Save'; return; }
+  }
+  toast(`Segments updated for ${segAssignUserName}!`);
+  closeModal('modal-admin-seg-assign');
+  btn.disabled=false; btn.textContent='💾 Save';
+}
 </script>
+
+<!-- Segment Assignment Modal -->
+<div class="modal-overlay" id="modal-admin-seg-assign">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">🔧 Assign Segments</div>
+      <button class="modal-close" onclick="closeModal('modal-admin-seg-assign')">&times;</button>
+    </div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:16px">
+      Technician: <strong id="admin-sa-name"></strong>
+    </p>
+    <div id="admin-sa-list"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-admin-seg-assign')">Cancel</button>
+      <button class="btn btn-primary" id="admin-sa-save" onclick="saveAdminSegAssign()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
