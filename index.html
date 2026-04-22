@@ -137,7 +137,7 @@ async function redirectByRole() {
   if (!session) return;
   const { data: user } = await db.from('users').select('role').eq('id', session.user.id).single();
   if (!user) return;
-  const map = { admin:'dashboard-scheduling.html', sales:'dashboard-sales.html', scheduling:'dashboard-scheduling.html', technician:'dashboard-technician.html' };
+  const map = { admin:'dashboard-admin.html', sales:'dashboard-sales.html', scheduling:'dashboard-scheduling.html', technician:'dashboard-technician.html' };
   window.location.href = map[user.role] || 'index.html';
 }
 
