@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Handy sQuad — BDM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://rmirpbatguppzlgodfwg.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaXJwYmF0Z3VwcHpsZ29kZndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDkxNTUsImV4cCI6MjA5MTk4NTE1NX0.xOGziyIekqXmJRcrZJbVmugcAqjMBeGPgxwd4zcdZZE';
+</script>
+<script src="config.js" onerror="void 0"></script>
+<script src="app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<!-- Chart.js for graphs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0d9488;--teal-d:#0f766e;--teal-l:#ccfbf1;--teal-xl:#f0fdfa;
+  --blue:#1d4ed8;--blue-l:#dbeafe;--blue-xl:#eff6ff;
+  --white:#fff;--s800:#1e293b;--s600:#475569;--s400:#94a3b8;
+  --s200:#e2e8f0;--s100:#f1f5f9;--s50:#f8fafc;
+  --green:#16a34a;--amber:#f59e0b;--red:#dc2626;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--s50);color:var(--s800);min-height:100vh}
+.app-shell{display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:240px;background:linear-gradient(180deg,#0f172a,#0f766e);display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sb-logo{padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:16px}
+.sb-logo .name{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.4px}
+.sb-logo .name span{color:#5eead4}
+.sb-logo .role{font-size:11px;color:#5eead4;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 24px;color:rgba(255,255,255,.65);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,.08);border-left-color:#5eead4}
+.sb-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,.1)}
+
+/* Main */
+.main{margin-left:240px;flex:1}
+.topbar{background:var(--white);border-bottom:1px solid var(--s200);padding:16px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+.page-title{font-size:20px;font-weight:800;color:var(--s800)}
+.page-sub{font-size:13px;color:var(--s400);font-weight:500}
+.content{padding:28px}
+
+/* View sections */
+.view{display:none}
+.view.active{display:block}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:12px;align-items:center;margin-bottom:24px;flex-wrap:wrap}
+.filter-bar input,.filter-bar select{padding:9px 14px;border:2px solid var(--s200);border-radius:10px;font-size:13px;font-family:inherit;color:var(--s800);background:var(--white)}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--teal)}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.kpi{background:var(--white);border-radius:16px;padding:20px;border:1px solid var(--s200);position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:-16px;right:-16px;width:72px;height:72px;border-radius:50%;opacity:.07;background:var(--teal)}
+.kpi-val{font-size:26px;font-weight:800;color:var(--s800);line-height:1}
+.kpi-label{font-size:12px;color:var(--s400);font-weight:600;margin-top:5px}
+.kpi-sub{font-size:11px;color:var(--teal-d);font-weight:600;margin-top:4px}
+
+/* Grid 2 col */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px}
+
+/* Cards */
+.card{background:var(--white);border-radius:16px;border:1px solid var(--s200);padding:22px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-title{font-size:14px;font-weight:700;color:var(--s800);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.card-title span{font-size:11px;color:var(--s400);font-weight:500}
+
+/* Segment breakdown table */
+.seg-table{width:100%;border-collapse:collapse}
+.seg-table th{padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--s400);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--s100)}
+.seg-table th:first-child{text-align:left}
+.seg-table td{padding:10px 12px;font-size:13px;text-align:right;border-bottom:1px solid var(--s100);vertical-align:middle}
+.seg-table td:first-child{text-align:left;font-weight:600}
+.seg-table tr:last-child td{border-bottom:none}
+.seg-table tr.total-row td{font-weight:800;color:var(--teal-d);background:var(--teal-xl);border-top:2px solid var(--teal-l)}
+
+/* Staff table */
+.staff-table{width:100%;border-collapse:collapse}
+.staff-table th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--s400);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--s100)}
+.staff-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--s100);vertical-align:middle}
+.staff-table tr:last-child td{border-bottom:none}
+
+/* Progress bar */
+.prog-wrap{height:6px;background:var(--s100);border-radius:99px;overflow:hidden;margin-top:4px}
+.prog-bar{height:100%;border-radius:99px;transition:width .5s ease;background:linear-gradient(90deg,var(--teal),#06b6d4)}
+
+/* Booking row in recent list */
+.bk-row{padding:10px 0;border-bottom:1px solid var(--s100);display:flex;justify-content:space-between;align-items:flex-start}
+.bk-row:last-child{border-bottom:none}
+.bk-customer{font-weight:700;font-size:13px}
+.bk-meta{font-size:11px;color:var(--s400);margin-top:2px}
+.bk-right{text-align:right;flex-shrink:0;margin-left:12px}
+.bk-amount{font-weight:800;color:var(--teal-d);font-size:14px}
+.bk-seg{font-size:11px;color:var(--s400);margin-top:2px}
+
+/* Badge */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.b-booked{background:#dbeafe;color:#1d4ed8}
+.b-completed{background:#dcfce7;color:#16a34a}
+.b-cancelled{background:#fee2e2;color:#dc2626}
+.b-rescheduled{background:#fef3c7;color:#d97706}
+
+/* Spinner */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--s200);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-overlay{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--s400);font-size:14px;gap:10px}
+
+/* Chart containers */
+.chart-wrap{position:relative;height:220px}
+
+/* Trend chip */
+.trend{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+.trend.up{background:#dcfce7;color:#16a34a}
+.trend.dn{background:#fee2e2;color:#dc2626}
+.trend.eq{background:#f1f5f9;color:#64748b}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="name">Handy <span>sQuad</span></div>
+    <div class="role">📊 BDM Panel</div>
+  </div>
+  <a class="nav-item active" href="#" onclick="showView('overview',this);return false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" href="#" onclick="showView('bystaff',this);return false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    By Sales Staff
+  </a>
+  <a class="nav-item" href="#" onclick="showView('byseg',this);return false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    By Segment
+  </a>
+  <a class="nav-item" href="#" onclick="showView('bookings',this);return false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    All Bookings
+  </a>
+  <div class="sb-bottom"><div id="user-badge-sidebar"></div></div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="page-title">Sales Overview</div>
+      <div class="page-sub" id="page-sub">Today's performance across all segments</div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div class="filter-bar" style="margin-bottom:0">
+        <input type="date" id="g-date-from" onchange="refreshAll()"/>
+        <input type="date" id="g-date-to" onchange="refreshAll()"/>
+        <select id="g-seg" onchange="refreshAll()"><option value="">All Segments</option></select>
+      </div>
+      <div id="user-badge-top"></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── OVERVIEW VIEW ─────────────────────────────────── -->
+    <div class="view active" id="view-overview">
+
+      <!-- KPIs -->
+      <div class="kpi-row" id="kpi-row">
+        <div class="kpi"><div class="kpi-val" id="kpi-bookings">—</div><div class="kpi-label">Total Bookings</div><div class="kpi-sub" id="kpi-bookings-sub"></div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-revenue">—</div><div class="kpi-label">Total Revenue</div><div class="kpi-sub" id="kpi-revenue-sub"></div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-avg">—</div><div class="kpi-label">Avg per Booking</div><div class="kpi-sub" id="kpi-avg-sub"></div></div>
+        <div class="kpi"><div class="kpi-val" id="kpi-cancelled">—</div><div class="kpi-label">Cancelled</div><div class="kpi-sub" id="kpi-cancelled-sub"></div></div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Revenue by Segment <span id="seg-chart-date"></span></div>
+          <div class="chart-wrap"><canvas id="chart-seg"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Bookings by Status <span id="status-chart-date"></span></div>
+          <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Staff performance mini + recent bookings -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Sales Staff Performance</div>
+          <div id="staff-mini"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent Bookings <span id="recent-count"></span></div>
+          <div id="recent-list" style="max-height:280px;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BY STAFF VIEW ─────────────────────────────────── -->
+    <div class="view" id="view-bystaff">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Revenue by Sales Staff</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="chart-staff-bar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Individual Breakdown</div>
+        <div id="staff-detail-table"></div>
+      </div>
+    </div>
+
+    <!-- ── BY SEGMENT VIEW ───────────────────────────────── -->
+    <div class="view" id="view-byseg">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Revenue Trend by Segment</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="chart-seg-trend"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Segment Summary</div>
+        <div style="overflow-x:auto"><table class="seg-table" id="seg-detail-table">
+          <thead><tr>
+            <th>Segment</th><th>Bookings</th><th>Revenue</th><th>Avg/Booking</th><th>Cancelled</th><th>Conversion</th>
+          </tr></thead>
+          <tbody id="seg-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── ALL BOOKINGS VIEW ─────────────────────────────── -->
+    <div class="view" id="view-bookings">
+      <div class="filter-bar">
+        <select id="bk-status-filter" onchange="loadBookingsView()">
+          <option value="">All Status</option>
+          <option value="booked">Booked</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="rescheduled">Rescheduled</option>
+        </select>
+        <select id="bk-staff-filter" onchange="loadBookingsView()"><option value="">All Staff</option></select>
+      </div>
+      <div class="card">
+        <div id="bookings-table-container"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+const {createClient}=supabase;
+const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let currentUser=null;
+let allSegments=[];
+let allSalesStaff=[];
+let chartSegInstance=null;
+let chartStatusInstance=null;
+let chartStaffBar=null;
+let chartSegTrend=null;
+
+// ── COLORS ────────────────────────────────────────────────────
+const PALETTE=['#0d9488','#1d4ed8','#f59e0b','#dc2626','#8b5cf6','#ec4899','#06b6d4','#16a34a','#f97316','#64748b'];
+
+(async()=>{
+  currentUser=await requireAuth(['bdm','admin']);
+  if(!currentUser)return;
+  renderUserBadge(currentUser,'user-badge-top');
+  renderUserBadge(currentUser,'user-badge-sidebar');
+
+  // Load segments dropdown
+  const{data:segs}=await db.from('segments').select('id,name').order('name');
+  allSegments=segs||[];
+  const segSel=document.getElementById('g-seg');
+  allSegments.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;segSel.appendChild(o);});
+
+  // Load sales staff dropdown
+  const{data:staff}=await db.from('users').select('id,name').eq('role','sales').order('name');
+  allSalesStaff=staff||[];
+  const staffSel=document.getElementById('bk-staff-filter');
+  allSalesStaff.forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.name;staffSel.appendChild(o);});
+
+  // Set default date range to today
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('g-date-from').value=today;
+  document.getElementById('g-date-to').value=today;
+
+  await refreshAll();
+})();
+
+// ── REFRESH ALL VIEWS ─────────────────────────────────────────
+async function refreshAll(){
+  const from=document.getElementById('g-date-from').value;
+  const to=document.getElementById('g-date-to').value;
+  const segId=document.getElementById('g-seg').value;
+
+  // Fetch bookings for the range
+  let q=db.from('bookings').select(`
+    id,status,total_amount,advance_amount,service_details,created_at,
+    created_by_user_id,
+    customers(name,phone,place),
+    slots(date,time,segment_id,segments(name))
+  `).order('created_at',{ascending:false}).limit(1000);
+
+  if(from) q=q.gte('slots.date',from);
+  if(to)   q=q.lte('slots.date',to);
+  if(segId)q=q.eq('slots.segment_id',segId);
+
+  const{data}=await q;
+  const bks=(data||[]).filter(b=>b.slots?.date);
+
+  updateKPIs(bks);
+  renderSegChart(bks);
+  renderStatusChart(bks);
+  renderStaffMini(bks);
+  renderRecentList(bks);
+  if(document.getElementById('view-bystaff').classList.contains('active'))renderStaffView(bks);
+  if(document.getElementById('view-byseg').classList.contains('active'))renderSegView(bks);
+  if(document.getElementById('view-bookings').classList.contains('active'))renderBookingsTable(bks);
+}
+
+// ── KPIs ──────────────────────────────────────────────────────
+function updateKPIs(bks){
+  const active=bks.filter(b=>b.status!=='cancelled');
+  const total=bks.length;
+  const rev=active.reduce((a,b)=>a+Number(b.total_amount||0),0);
+  const avg=active.length?rev/active.length:0;
+  const cancelled=bks.filter(b=>b.status==='cancelled').length;
+  const pctCanc=total?((cancelled/total)*100).toFixed(0)+'%':'0%';
+
+  document.getElementById('kpi-bookings').textContent=total;
+  document.getElementById('kpi-bookings-sub').textContent=`${active.length} active`;
+  document.getElementById('kpi-revenue').textContent=fmtCur(rev);
+  document.getElementById('kpi-revenue-sub').textContent=`excl. cancelled`;
+  document.getElementById('kpi-avg').textContent=fmtCur(avg);
+  document.getElementById('kpi-avg-sub').textContent=`per active booking`;
+  document.getElementById('kpi-cancelled').textContent=cancelled;
+  document.getElementById('kpi-cancelled-sub').textContent=`${pctCanc} of total`;
+}
+
+// ── SEGMENT REVENUE CHART ─────────────────────────────────────
+function renderSegChart(bks){
+  const map={};
+  bks.filter(b=>b.status!=='cancelled').forEach(b=>{
+    const n=b.slots?.segments?.name||'Other';
+    map[n]=(map[n]||0)+Number(b.total_amount||0);
+  });
+  const sorted=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const labels=sorted.map(e=>e[0]);
+  const vals=sorted.map(e=>e[1]);
+
+  if(chartSegInstance)chartSegInstance.destroy();
+  const ctx=document.getElementById('chart-seg').getContext('2d');
+  chartSegInstance=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'Revenue (₹)',data:vals,backgroundColor:PALETTE.slice(0,labels.length),borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+Number(c.raw).toLocaleString('en-IN')}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'₹'+Number(v).toLocaleString('en-IN')},grid:{color:'#f1f5f9'}},x:{grid:{display:false}}}}
+  });
+}
+
+// ── STATUS DOUGHNUT CHART ─────────────────────────────────────
+function renderStatusChart(bks){
+  const statusColors={booked:'#1d4ed8',completed:'#16a34a',cancelled:'#dc2626',rescheduled:'#d97706'};
+  const map={};
+  bks.forEach(b=>{map[b.status]=(map[b.status]||0)+1;});
+  const labels=Object.keys(map);
+  const vals=Object.values(map);
+
+  if(chartStatusInstance)chartStatusInstance.destroy();
+  const ctx=document.getElementById('chart-status').getContext('2d');
+  chartStatusInstance=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels,datasets:[{data:vals,backgroundColor:labels.map(l=>statusColors[l]||'#94a3b8'),hoverOffset:4,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:12}}}}
+  });
+}
+
+// ── STAFF MINI (overview card) ────────────────────────────────
+function renderStaffMini(bks){
+  const container=document.getElementById('staff-mini');
+  const staffMap={};
+  bks.filter(b=>b.status!=='cancelled').forEach(b=>{
+    const uid=b.created_by_user_id||'unknown';
+    const name=allSalesStaff.find(s=>s.id===uid)?.name||'Unknown';
+    if(!staffMap[uid])staffMap[uid]={name,bookings:0,revenue:0};
+    staffMap[uid].bookings++;
+    staffMap[uid].revenue+=Number(b.total_amount||0);
+  });
+  const sorted=Object.values(staffMap).sort((a,b)=>b.revenue-a.revenue);
+  const maxRev=sorted[0]?.revenue||1;
+
+  if(!sorted.length){container.innerHTML='<div style="color:var(--s400);font-size:13px;text-align:center;padding:20px">No data</div>';return;}
+
+  container.innerHTML=sorted.map((s,i)=>`
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:50%;background:${PALETTE[i%PALETTE.length]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff">${s.name.charAt(0).toUpperCase()}</div>
+          <span style="font-size:13px;font-weight:700">${s.name}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:800;color:var(--teal-d)">${fmtCur(s.revenue)}</div>
+          <div style="font-size:10px;color:var(--s400)">${s.bookings} booking${s.bookings!==1?'s':''}</div>
+        </div>
+      </div>
+      <div class="prog-wrap"><div class="prog-bar" style="width:${(s.revenue/maxRev*100).toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+    </div>`).join('');
+}
+
+// ── RECENT BOOKINGS LIST ──────────────────────────────────────
+function renderRecentList(bks){
+  const container=document.getElementById('recent-list');
+  document.getElementById('recent-count').textContent=`${bks.length} total`;
+  const recent=bks.slice(0,20);
+  if(!recent.length){container.innerHTML='<div style="color:var(--s400);font-size:13px;padding:16px 0;text-align:center">No bookings</div>';return;}
+  container.innerHTML=recent.map(b=>`
+    <div class="bk-row">
+      <div>
+        <div class="bk-customer">${b.customers?.name||'—'}</div>
+        <div class="bk-meta">${b.customers?.place||''} · ${b.slots?.segments?.name||'—'} · ${fmtDate(b.slots?.date)}</div>
+        <div style="margin-top:3px"><span class="badge b-${b.status}">${b.status}</span></div>
+      </div>
+      <div class="bk-right">
+        <div class="bk-amount">${fmtCur(b.total_amount)}</div>
+        <div class="bk-seg">${allSalesStaff.find(s=>s.id===b.created_by_user_id)?.name||'—'}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── BY STAFF VIEW ─────────────────────────────────────────────
+function renderStaffView(bks){
+  // Bar chart
+  const staffMap={};
+  bks.filter(b=>b.status!=='cancelled').forEach(b=>{
+    const uid=b.created_by_user_id||'unknown';
+    const name=allSalesStaff.find(s=>s.id===uid)?.name||'Unknown';
+    if(!staffMap[uid])staffMap[uid]={name,revenue:0,bookings:0,completed:0,cancelled:0};
+    staffMap[uid].revenue+=Number(b.total_amount||0);
+    staffMap[uid].bookings++;
+  });
+  bks.filter(b=>b.status==='cancelled').forEach(b=>{
+    const uid=b.created_by_user_id||'unknown';
+    if(staffMap[uid])staffMap[uid].cancelled++;
+  });
+  bks.filter(b=>b.status==='completed').forEach(b=>{
+    const uid=b.created_by_user_id||'unknown';
+    if(staffMap[uid])staffMap[uid].completed++;
+  });
+
+  const sorted=Object.values(staffMap).sort((a,b)=>b.revenue-a.revenue);
+  const labels=sorted.map(s=>s.name);
+  const revVals=sorted.map(s=>s.revenue);
+  const bkVals=sorted.map(s=>s.bookings);
+
+  if(chartStaffBar)chartStaffBar.destroy();
+  const ctx=document.getElementById('chart-staff-bar').getContext('2d');
+  chartStaffBar=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Revenue (₹)',data:revVals,backgroundColor:PALETTE.slice(0,labels.length),borderRadius:6,yAxisID:'y'},
+        {label:'Bookings',data:bkVals,backgroundColor:PALETTE.slice(0,labels.length).map(c=>c+'55'),borderRadius:6,yAxisID:'y2'}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+      scales:{
+        y:{beginAtZero:true,position:'left',ticks:{callback:v=>'₹'+Number(v).toLocaleString('en-IN')},grid:{color:'#f1f5f9'}},
+        y2:{beginAtZero:true,position:'right',grid:{display:false}},
+        x:{grid:{display:false}}
+      }}
+  });
+
+  // Detail table
+  const tbody=document.getElementById('staff-detail-table');
+  if(!sorted.length){tbody.innerHTML='<div style="color:var(--s400);padding:16px;font-size:13px">No data</div>';return;}
+  tbody.innerHTML=`<table class="staff-table" style="width:100%">
+    <thead><tr>
+      <th>Sales Person</th><th>Bookings</th><th>Revenue</th><th>Avg/Booking</th><th>Completed</th><th>Cancelled</th>
+    </tr></thead>
+    <tbody>
+    ${sorted.map((s,i)=>`<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:${PALETTE[i%PALETTE.length]};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff">${s.name.charAt(0).toUpperCase()}</div>
+          <span style="font-weight:700">${s.name}</span>
+        </div>
+      </td>
+      <td>${s.bookings}</td>
+      <td style="font-weight:700;color:var(--teal-d)">${fmtCur(s.revenue)}</td>
+      <td>${fmtCur(s.bookings?s.revenue/s.bookings:0)}</td>
+      <td><span style="color:var(--green);font-weight:600">${s.completed}</span></td>
+      <td><span style="color:var(--red);font-weight:600">${s.cancelled}</span></td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ── BY SEGMENT VIEW ───────────────────────────────────────────
+function renderSegView(bks){
+  // Segment summary table
+  const segMap={};
+  bks.forEach(b=>{
+    const n=b.slots?.segments?.name||'Other';
+    if(!segMap[n])segMap[n]={name:n,total:0,revenue:0,cancelled:0,completed:0};
+    segMap[n].total++;
+    if(b.status==='cancelled')segMap[n].cancelled++;
+    if(b.status==='completed')segMap[n].completed++;
+    if(b.status!=='cancelled')segMap[n].revenue+=Number(b.total_amount||0);
+  });
+  const rows=Object.values(segMap).sort((a,b)=>b.revenue-a.revenue);
+  const totals={total:rows.reduce((a,r)=>a+r.total,0),revenue:rows.reduce((a,r)=>a+r.revenue,0),cancelled:rows.reduce((a,r)=>a+r.cancelled,0),completed:rows.reduce((a,r)=>a+r.completed,0)};
+
+  document.getElementById('seg-tbody').innerHTML=rows.map(r=>{
+    const active=r.total-r.cancelled;
+    const conv=active?((r.completed/active)*100).toFixed(0)+'%':'—';
+    const avg=active?r.revenue/active:0;
+    return `<tr>
+      <td><span style="background:var(--teal-l);color:var(--teal-d);padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700">${r.name}</span></td>
+      <td>${r.total}</td>
+      <td style="font-weight:700;color:var(--teal-d)">${fmtCur(r.revenue)}</td>
+      <td>${fmtCur(avg)}</td>
+      <td style="color:var(--red)">${r.cancelled}</td>
+      <td>${conv}</td>
+    </tr>`;
+  }).join('')+`<tr class="total-row">
+    <td>TOTAL</td>
+    <td>${totals.total}</td>
+    <td>${fmtCur(totals.revenue)}</td>
+    <td>${fmtCur(totals.total-totals.cancelled?totals.revenue/(totals.total-totals.cancelled):0)}</td>
+    <td>${totals.cancelled}</td>
+    <td>${totals.total-totals.cancelled?((totals.completed/(totals.total-totals.cancelled))*100).toFixed(0)+'%':'—'}</td>
+  </tr>`;
+
+  // Trend bar chart (revenue per segment)
+  const labels=rows.map(r=>r.name);
+  const vals=rows.map(r=>r.revenue);
+  if(chartSegTrend)chartSegTrend.destroy();
+  const ctx=document.getElementById('chart-seg-trend').getContext('2d');
+  chartSegTrend=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Revenue (₹)',data:vals,backgroundColor:PALETTE.slice(0,labels.length),borderRadius:8,borderSkipped:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+Number(c.raw).toLocaleString('en-IN')}}},
+      scales:{x:{beginAtZero:true,ticks:{callback:v=>'₹'+Number(v).toLocaleString('en-IN')},grid:{color:'#f1f5f9'}},y:{grid:{display:false}}}}
+  });
+}
+
+// ── ALL BOOKINGS TABLE ────────────────────────────────────────
+function renderBookingsTable(bks){
+  const statusFilter=document.getElementById('bk-status-filter').value;
+  const staffFilter=document.getElementById('bk-staff-filter').value;
+  let filtered=bks;
+  if(statusFilter)filtered=filtered.filter(b=>b.status===statusFilter);
+  if(staffFilter)filtered=filtered.filter(b=>b.created_by_user_id===staffFilter);
+
+  const container=document.getElementById('bookings-table-container');
+  if(!filtered.length){container.innerHTML='<div class="ld-overlay">No bookings for selected filters.</div>';return;}
+
+  container.innerHTML=`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:var(--teal-xl)">
+      ${['#','Customer','Place','Segment','Date','Sales By','Amount','Status'].map(h=>`<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--s400);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--teal-l)">${h}</th>`).join('')}
+    </tr></thead>
+    <tbody>
+    ${filtered.map(b=>`<tr style="border-bottom:1px solid var(--s100)">
+      <td style="padding:10px 14px;font-weight:700;color:var(--teal-d);font-size:12px">#${b.id}</td>
+      <td style="padding:10px 14px"><div style="font-weight:600;font-size:13px">${b.customers?.name||'—'}</div><div style="font-size:11px;color:var(--s400)">${b.customers?.phone||''}</div></td>
+      <td style="padding:10px 14px;font-size:13px;color:var(--s600)">${b.customers?.place||'—'}</td>
+      <td style="padding:10px 14px"><span style="background:var(--teal-l);color:var(--teal-d);padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700">${b.slots?.segments?.name||'—'}</span></td>
+      <td style="padding:10px 14px;font-size:13px">${fmtDate(b.slots?.date)}</td>
+      <td style="padding:10px 14px;font-size:13px;font-weight:600">${allSalesStaff.find(s=>s.id===b.created_by_user_id)?.name||'—'}</td>
+      <td style="padding:10px 14px;font-size:13px;font-weight:700;color:var(--teal-d)">${fmtCur(b.total_amount)}</td>
+      <td style="padding:10px 14px"><span class="badge b-${b.status}">${b.status}</span></td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+async function loadBookingsView(){await refreshAll();}
+
+// ── VIEW SWITCHER ─────────────────────────────────────────────
+async function showView(view,el){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  const titles={
+    overview:['Sales Overview','Today\'s performance across all segments'],
+    bystaff:['By Sales Staff','Individual performance breakdown'],
+    byseg:['By Segment','Revenue and bookings by service segment'],
+    bookings:['All Bookings','Full list of bookings with filters']
+  };
+  document.getElementById('page-title').textContent=titles[view][0];
+  document.getElementById('page-sub').textContent=titles[view][1];
+
+  // Load data for specific views
+  const from=document.getElementById('g-date-from').value;
+  const to=document.getElementById('g-date-to').value;
+  const segId=document.getElementById('g-seg').value;
+  let q=db.from('bookings').select(`id,status,total_amount,advance_amount,service_details,created_at,created_by_user_id,customers(name,phone,place),slots(date,time,segment_id,segments(name))`).order('created_at',{ascending:false}).limit(1000);
+  if(from)q=q.gte('slots.date',from);
+  if(to)q=q.lte('slots.date',to);
+  if(segId)q=q.eq('slots.segment_id',segId);
+  const{data}=await q;
+  const bks=(data||[]).filter(b=>b.slots?.date);
+
+  if(view==='bystaff')renderStaffView(bks);
+  if(view==='byseg')renderSegView(bks);
+  if(view==='bookings')renderBookingsTable(bks);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtCur(n){if(n===null||n===undefined||isNaN(n))return'₹0';return'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:0});}
+</script>
+</body>
+</html>
