@@ -357,23 +357,47 @@ function exportCSV() {
 async function loadUsers() {
   const container = document.getElementById('users-table');
   container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
-  const { data } = await db.from('users').select('*').order('role').order('name');
-  if (!data?.length) { container.innerHTML='<div class="loading-overlay">No users found.</div>'; return; }
+
+  const [usersRes, segAssignRes, segsRes] = await Promise.all([
+    db.from('users').select('*').order('role').order('name'),
+    db.from('technician_segments').select('user_id,segment_id,segments(name)'),
+    db.from('segments').select('id,name').order('name')
+  ]);
+
+  const data = usersRes.data || [];
+  if (!data.length) { container.innerHTML='<div class="loading-overlay">No users found.</div>'; return; }
+
+  // Build segment map per technician
+  const techSegs = {};
+  (segAssignRes.data||[]).forEach(a => {
+    if (!techSegs[a.user_id]) techSegs[a.user_id] = [];
+    techSegs[a.user_id].push(a.segments?.name || '');
+  });
 
   const roleColors = { admin:'#ef4444', sales:'#22c55e', scheduling:'#3b82f6', technician:'#f59e0b', bdm:'#0d9488' };
+
   container.innerHTML = `<div class="data-table-wrap"><table class="data-table">
-    <thead><tr>${['Name','Email','Role','Joined','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <thead><tr>${['Name','Email','Role','Segments','Joined','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>
-    ${data.map(u=>`<tr>
-      <td style="font-weight:600">${u.name}</td>
-      <td style="color:var(--slate-500)">${u.email}</td>
-      <td><span class="badge" style="background:${roleColors[u.role]||'#6b7280'}1a;color:${roleColors[u.role]||'#6b7280'}">${u.role}</span></td>
-      <td>${formatDate(u.created_at)}</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="row-btn danger" onclick="changeRole('${u.id}','${u.name}','${u.role}')">Change Role</button>
-        ${u.role === 'technician' ? `<button class="row-btn view" onclick="openSegAssign('${u.id}','${u.name.replace(/'/g,"\\'")}')">🔧 Segments</button>` : ''}
-      </td>
-    </tr>`).join('')}
+    ${data.map(u => {
+      const segs = techSegs[u.id] || [];
+      const segDisplay = u.role === 'technician'
+        ? (segs.length
+            ? segs.map(s=>`<span style="background:#fef3c7;color:#b45309;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;margin-right:3px">${s}</span>`).join('')
+            : `<span style="color:#94a3b8;font-size:12px;font-style:italic">None assigned</span>`)
+        : '<span style="color:#94a3b8;font-size:12px">—</span>';
+      return `<tr>
+        <td style="font-weight:600">${u.name}</td>
+        <td style="color:var(--slate-500);font-size:12px">${u.email}</td>
+        <td><span class="badge" style="background:${roleColors[u.role]||'#6b7280'}1a;color:${roleColors[u.role]||'#6b7280'}">${u.role}</span></td>
+        <td>${segDisplay}</td>
+        <td>${formatDate(u.created_at)}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="row-btn danger" onclick="changeRole('${u.id}','${u.name}','${u.role}')">Change Role</button>
+          ${u.role === 'technician' ? `<button class="row-btn view" onclick="openSegAssign('${u.id}','${u.name.replace(/'/g,"\\'")}')">🔧 Segments</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('')}
     </tbody></table></div>`;
 }
 
@@ -486,6 +510,7 @@ async function saveAdminSegAssign() {
   toast(`Segments updated for ${segAssignUserName}!`);
   closeModal('modal-admin-seg-assign');
   btn.disabled=false; btn.textContent='💾 Save';
+  loadUsers(); // refresh table so segment pills update
 }
 </script>
 
