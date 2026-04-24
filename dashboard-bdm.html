@@ -6,13 +6,12 @@
 <title>Handy sQuad — BDM</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL='https://rmirpbatguppzlgodfwg.supabase.co';
-const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaXJwYmF0Z3VwcHpsZ29kZndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDkxNTUsImV4cCI6MjA5MTk4NTE1NX0.xOGziyIekqXmJRcrZJbVmugcAqjMBeGPgxwd4zcdZZE';
+// Fallback config — overridden by config.js if present
+var SUPABASE_URL='https://rmirpbatguppzlgodfwg.supabase.co';
+var SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaXJwYmF0Z3VwcHpsZ29kZndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDkxNTUsImV4cCI6MjA5MTk4NTE1NX0.xOGziyIekqXmJRcrZJbVmugcAqjMBeGPgxwd4zcdZZE';
 </script>
 <script src="config.js" onerror="void 0"></script>
-<script src="app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<!-- Chart.js for graphs -->
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -254,7 +253,35 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--s50);color:var(
 
 <script>
 const {createClient}=supabase;
-const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const bdmDb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+// ── Inline auth (no app.js dependency) ───────────────────────
+async function bdmRequireAuth() {
+  const {data:{session}} = await bdmDb.auth.getSession();
+  if (!session) { window.location.href='index.html'; return null; }
+  const {data:user} = await bdmDb.from('users').select('*').eq('id',session.user.id).single();
+  if (!user) { await bdmDb.auth.signOut(); window.location.href='index.html'; return null; }
+  if (!['bdm','admin'].includes(user.role)) { alert('Access denied'); window.location.href='index.html'; return null; }
+  return user;
+}
+function bdmRenderBadge(user, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el||!user) return;
+  const roleColor = {admin:'#ef4444',sales:'#22c55e',scheduling:'#3b82f6',technician:'#f59e0b',bdm:'#0d9488'};
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+    <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center">${user.name.charAt(0).toUpperCase()}</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:14px;font-weight:600;color:#1e293b">${user.name}</span>
+      <span style="font-size:10px;font-weight:700;color:#fff;padding:2px 8px;border-radius:20px;background:${roleColor[user.role]||'#6b7280'};text-transform:uppercase;letter-spacing:.5px;width:fit-content">${user.role}</span>
+    </div>
+    <button onclick="bdmLogout()" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:4px;border-radius:6px" title="Logout">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>`;
+}
+async function bdmLogout() { await bdmDb.auth.signOut(); window.location.href='index.html'; }
+function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtCur(n){if(n===null||n===undefined||isNaN(n))return'₹0';return'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:0});}
 
 let currentUser=null;
 let allSegments=[];
@@ -268,19 +295,19 @@ let chartSegTrend=null;
 const PALETTE=['#0d9488','#1d4ed8','#f59e0b','#dc2626','#8b5cf6','#ec4899','#06b6d4','#16a34a','#f97316','#64748b'];
 
 (async()=>{
-  currentUser=await requireAuth(['bdm','admin']);
+  currentUser=await bdmRequireAuth();
   if(!currentUser)return;
-  renderUserBadge(currentUser,'user-badge-top');
-  renderUserBadge(currentUser,'user-badge-sidebar');
+  bdmRenderBadge(currentUser,'user-badge-top');
+  bdmRenderBadge(currentUser,'user-badge-sidebar');
 
   // Load segments dropdown
-  const{data:segs}=await db.from('segments').select('id,name').order('name');
+  const{data:segs}=await bdmDb.from('segments').select('id,name').order('name');
   allSegments=segs||[];
   const segSel=document.getElementById('g-seg');
   allSegments.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;segSel.appendChild(o);});
 
   // Load sales staff dropdown
-  const{data:staff}=await db.from('users').select('id,name').eq('role','sales').order('name');
+  const{data:staff}=await bdmDb.from('users').select('id,name').eq('role','sales').order('name');
   allSalesStaff=staff||[];
   const staffSel=document.getElementById('bk-staff-filter');
   allSalesStaff.forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.name;staffSel.appendChild(o);});
@@ -300,7 +327,7 @@ async function refreshAll(){
   const segId=document.getElementById('g-seg').value;
 
   // Fetch bookings for the range
-  let q=db.from('bookings').select(`
+  let q=bdmDb.from('bookings').select(`
     id,status,total_amount,advance_amount,service_details,created_at,
     created_by_user_id,
     customers(name,phone,place),
@@ -604,7 +631,7 @@ async function showView(view,el){
   const from=document.getElementById('g-date-from').value;
   const to=document.getElementById('g-date-to').value;
   const segId=document.getElementById('g-seg').value;
-  let q=db.from('bookings').select(`id,status,total_amount,advance_amount,service_details,created_at,created_by_user_id,customers(name,phone,place),slots(date,time,segment_id,segments(name))`).order('created_at',{ascending:false}).limit(1000);
+  let q=bdmDb.from('bookings').select(`id,status,total_amount,advance_amount,service_details,created_at,created_by_user_id,customers(name,phone,place),slots(date,time,segment_id,segments(name))`).order('created_at',{ascending:false}).limit(1000);
   if(from)q=q.gte('slots.date',from);
   if(to)q=q.lte('slots.date',to);
   if(segId)q=q.eq('slots.segment_id',segId);
@@ -616,9 +643,6 @@ async function showView(view,el){
   if(view==='bookings')renderBookingsTable(bks);
 }
 
-// ── HELPERS ───────────────────────────────────────────────────
-function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
-function fmtCur(n){if(n===null||n===undefined||isNaN(n))return'₹0';return'₹'+Number(n).toLocaleString('en-IN',{maximumFractionDigits:0});}
-</script>
+// ── VIEW SWITCHER ─────────────────────────────────────────────</script>
 </body>
 </html>
