@@ -1,9 +1,12 @@
 // ============================================================
 // app.js — Handy sQuad Shared Utilities
+// Uses var to prevent re-declaration errors when config.js
+// is also loaded on the same page (GitHub Pages).
 // ============================================================
 
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* global supabase, SUPABASE_URL, SUPABASE_ANON_KEY */
+var _supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var db = _supabaseClient;
 
 // ── Auth Helpers ─────────────────────────────────────────────
 
@@ -30,7 +33,7 @@ async function logout() {
 function renderUserBadge(user, containerId) {
   const el = document.getElementById(containerId);
   if (!el || !user) return;
-  const roleColor = { admin: '#ef4444', sales: '#22c55e', scheduling: '#3b82f6', technician: '#f59e0b' };
+  const roleColor = { admin: '#ef4444', sales: '#22c55e', scheduling: '#3b82f6', technician: '#f59e0b', bdm: '#0d9488' };
   el.innerHTML = `
     <div class="user-badge">
       <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
@@ -87,7 +90,6 @@ function toast(msg, type = 'success') {
 function openModal(id) { document.getElementById(id)?.classList.add('open'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
 
-// Click outside to close
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-overlay')) {
     e.target.classList.remove('open');
