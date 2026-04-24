@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Handy sQuad — Scheduling</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
+<script>
+// ── Inlined config ──────────────────────────────────────────
+var SUPABASE_URL     = 'https://rmirpbatguppzlgodfwg.supabase.co';
+var SUPABASE_ANON_KEY= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtaXJwYmF0Z3VwcHpsZ29kZndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDkxNTUsImV4cCI6MjA5MTk4NTE1NX0.xOGziyIekqXmJRcrZJbVmugcAqjMBeGPgxwd4zcdZZE';
+</script>
+<script src="config.js" onerror="void 0"></script>
 <script src="app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -141,7 +146,7 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
   <nav class="sidebar">
     <div class="sidebar-logo">
       <div class="name">Handy <span>sQuad</span></div>
-      <div class="role">Scheduling</div>
+      <div class="role" id="sidebar-role-label">Scheduling</div>
     </div>
     <a class="nav-item active" href="#" onclick="showView('slots')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -325,6 +330,21 @@ let rescheduleOldSlotId = null;
   if (!currentUser) return;
   renderUserBadge(currentUser, 'user-badge-top');
   renderUserBadge(currentUser, 'user-badge-sidebar');
+
+  // Show role in sidebar + back link for admin
+  if (currentUser.role === 'admin') {
+    document.getElementById('sidebar-role-label').textContent = 'Admin → Scheduling';
+    document.getElementById('sidebar-role-label').style.color = '#f87171';
+    // Insert back link at top of nav
+    const firstNav = document.querySelector('.nav-item');
+    const backLink = document.createElement('a');
+    backLink.href = 'dashboard-admin.html';
+    backLink.className = 'nav-item';
+    backLink.style.cssText = 'color:#f87171;border-left-color:#f87171;font-size:12px;padding:8px 24px';
+    backLink.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Back to Admin`;
+    firstNav.parentNode.insertBefore(backLink, firstNav);
+  }
+
   await loadSegments();
   document.getElementById('slot-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('bk-date').value = new Date().toISOString().split('T')[0];
