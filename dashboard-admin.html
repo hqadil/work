@@ -107,6 +107,10 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       Sales View
     </a>
+    <a class="nav-item" href="dashboard-bdm.html">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      BDM View
+    </a>
     <div class="sidebar-bottom"><div id="user-badge-sidebar"></div></div>
   </nav>
 
@@ -356,7 +360,7 @@ async function loadUsers() {
   const { data } = await db.from('users').select('*').order('role').order('name');
   if (!data?.length) { container.innerHTML='<div class="loading-overlay">No users found.</div>'; return; }
 
-  const roleColors = { admin:'#ef4444', sales:'#22c55e', scheduling:'#3b82f6', technician:'#f59e0b' };
+  const roleColors = { admin:'#ef4444', sales:'#22c55e', scheduling:'#3b82f6', technician:'#f59e0b', bdm:'#0d9488' };
   container.innerHTML = `<div class="data-table-wrap"><table class="data-table">
     <thead><tr>${['Name','Email','Role','Joined','Actions'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>
@@ -374,8 +378,8 @@ async function loadUsers() {
 }
 
 async function changeRole(userId, name, curRole) {
-  const newRole = prompt(`Change role for ${name}\nCurrent: ${curRole}\nNew role (admin/sales/scheduling/technician):`, curRole);
-  if (!newRole || !['admin','sales','scheduling','technician'].includes(newRole)) {
+  const newRole = prompt(`Change role for ${name}\nCurrent: ${curRole}\nNew role (admin/sales/scheduling/technician/bdm):`, curRole);
+  if (!newRole || !['admin','sales','scheduling','technician','bdm'].includes(newRole)) {
     toast('Invalid role.','error'); return;
   }
   const { error } = await db.from('users').update({ role: newRole }).eq('id', userId);
