@@ -317,9 +317,15 @@ function formatDate(d) {
 }
 
 (async () => {
+  // Parse booking_id from URL query string (works on any device/domain)
   const params = new URLSearchParams(window.location.search);
-  bookingId = params.get('booking_id') || parseInt(window.location.pathname.split('/').pop());
-  if (!bookingId) { showState('error'); return; }
+  bookingId = params.get('booking_id');
+  // Fallback: try hash fragment (#booking_id=N) for cases where query string is stripped
+  if (!bookingId && window.location.hash.includes('booking_id=')) {
+    bookingId = window.location.hash.split('booking_id=')[1]?.split('&')[0];
+  }
+  bookingId = parseInt(bookingId);
+  if (!bookingId || isNaN(bookingId)) { showState('error'); return; }
   document.getElementById('header-booking-id').textContent = `Booking #${bookingId}`;
 
   // Check if already submitted or has draft
@@ -426,6 +432,13 @@ async function submitReport() {
   }
 
   if (error) { showToast(error.message,'error'); btn.disabled=false; btn.textContent='Submit Work Report'; return; }
+
+  // Sync booking status — if work is completed, mark booking as completed too
+  if (status === 'completed') {
+    await db.from('bookings').update({ status: 'completed' }).eq('id', parseInt(bookingId));
+  } else if (status === 'rescheduled') {
+    await db.from('bookings').update({ status: 'rescheduled' }).eq('id', parseInt(bookingId));
+  }
 
   // Capture everything for the PDF
   const isHousekeeping = document.getElementById('housekeeping-fields').style.display !== 'none';
