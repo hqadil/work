@@ -301,6 +301,16 @@ textarea { resize:vertical;min-height:80px; }
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Work report is accessible via direct link — no login required.
+// Ensure we have an anon session so RLS allows reads/writes.
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    // Sign in anonymously so RLS policies for anon role work
+    await db.auth.signInAnonymously().catch(() => {});
+  }
+})();
+
 let bookingData = null;
 let bookingId = null;
 let isDraft = false;
