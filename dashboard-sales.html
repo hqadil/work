@@ -314,6 +314,19 @@ async function loadSlots() {
     bookingsBySlot[b.slot_id].push(b);
   });
 
+  // Fetch announcements for this date
+  const { data: announcements } = await db.from('segment_announcements')
+    .select('id,segment_id,message,ann_type')
+    .eq('date', date).eq('active', true);
+
+  // Index by segment_id_date for fast lookup
+  const announcementsBySegDate = {};
+  (announcements||[]).forEach(a => {
+    const key = `${a.segment_id}_${date}`;
+    if (!announcementsBySegDate[key]) announcementsBySegDate[key] = [];
+    announcementsBySegDate[key].push(a);
+  });
+
   // Group slots by segment
   const grouped = {};
   slots.forEach(s => {
@@ -333,15 +346,26 @@ async function loadSlots() {
       <div class="slots-grid">`;
     segSlots.forEach(slot => {
       const slotBookings = bookingsBySlot[slot.id] || [];
-      const realBooked = slot.booked_count;
-      const isFull = realBooked >= slot.capacity;
-      const openCount = Math.max(0, slot.capacity - realBooked);
-      const cardClass = isFull ? 'full' : (slotBookings.length > 0 ? 'booked' : 'available');
+      // Use live booking count from query as source of truth
+      const liveBooked = slotBookings.length;
+      const isFull = liveBooked >= slot.capacity;
+      const openCount = Math.max(0, slot.capacity - liveBooked);
+      const cardClass = isFull ? 'full' : (liveBooked > 0 ? 'booked' : 'available');
+      // Announcements for this segment on this date
+      const annKey = `${slot.segment_id}_${slot.date}`;
+      const anns = (announcementsBySegDate[annKey] || []);
+      const annHtml = anns.map(a => {
+        const colors = { warning:['#fef3c7','#f59e0b','#92400e'], info:['#eff6ff','#3b82f6','#1e40af'], notice:['#f0fdf4','#16a34a','#166534'] };
+        const [bg,border,text] = colors[a.ann_type] || colors.info;
+        const icon = a.ann_type==='warning'?'⚠️':a.ann_type==='notice'?'📢':'ℹ️';
+        return `<div style="margin-top:7px;background:${bg};border-left:3px solid ${border};border-radius:0 6px 6px 0;padding:5px 8px;font-size:11px;font-weight:600;color:${text};line-height:1.4">${icon} ${a.message}</div>`;
+      }).join('');
       html += `<div class="slot-card ${cardClass}" onclick="slotClick(${slot.id},'${segName}','${slot.date}','${slot.time}',${isFull})">
         <div class="slot-time">${formatTime(slot.time)}</div>
         <div class="slot-date">${formatDate(slot.date)}</div>
         ${slotBookings.map(bk => `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.07)"><div class="slot-customer">${bk.customers?.name || '—'}</div><div class="slot-work">${bk.service_details || ''}</div></div>`).join('')}
-        <div class="slot-capacity ${isFull?'slot-cap-full':''}" style="margin-top:8px">${isFull ? '🔴 Full ('+realBooked+'/'+slot.capacity+')' : '🟢 '+openCount+' of '+slot.capacity+' open'}${slotBookings.length > 0 ? ' · '+slotBookings.length+' booking(s)' : ''}</div>
+        <div class="slot-capacity ${isFull?'slot-cap-full':''}" style="margin-top:8px">${isFull ? '🔴 Full ('+liveBooked+'/'+slot.capacity+')' : '🟢 '+openCount+' of '+slot.capacity+' open'}</div>
+        ${annHtml}
       </div>`;
     });
     html += `</div></div>`;
