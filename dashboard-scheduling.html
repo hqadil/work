@@ -171,6 +171,10 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Reporting & Export
     </a>
+    <a class="nav-item" href="#" onclick="showView('announcements')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Announcements
+    </a>
     <div class="sidebar-bottom"><div id="user-badge-sidebar"></div></div>
   </nav>
 
@@ -284,6 +288,20 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
         <div id="srep-table"></div>
       </div>
 
+      <!-- ANNOUNCEMENTS VIEW -->
+      <div id="view-announcements" style="display:none">
+        <div class="filter-bar">
+          <input type="date" id="ann-date"/>
+          <select id="ann-seg-filter"><option value="">All Segments</option></select>
+          <button class="btn btn-primary btn-sm" onclick="loadAnnouncements()">🔄 Load</button>
+          <button class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #86efac" onclick="openAddAnnouncement()">+ New Announcement</button>
+        </div>
+        <!-- Active announcements -->
+        <div id="ann-active-container" style="margin-bottom:20px"></div>
+        <!-- Past/inactive -->
+        <div id="ann-past-container"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -339,6 +357,13 @@ body { font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);col
 </div>
 
 <script>
+// Template button handler for announcement modal
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('ann-tpl') && e.target.dataset.msg) {
+    document.getElementById('new-ann-message').value = e.target.dataset.msg;
+  }
+});
+
 let currentUser = null;
 let allSegments = [];
 let rescheduleBookingId = null;
@@ -373,7 +398,7 @@ let rescheduleOldSlotId = null;
 async function loadSegments() {
   const { data } = await db.from('segments').select('*').order('name');
   allSegments = data || [];
-  ['slot-seg','bk-seg','cs-segment','cw-seg'].forEach(id => {
+  ['slot-seg','bk-seg','cs-segment','cw-seg','ann-seg-filter'].forEach(id => {
     const el = document.getElementById(id);
     allSegments.forEach(s => {
       const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; el.appendChild(o);
@@ -935,17 +960,18 @@ async function saveEditBooking() {
 function showView(view) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   event?.target?.closest('.nav-item')?.classList.add('active');
-  ['slots','bookings','segment','reports','eod','completed','reporting'].forEach(v => {
+  ['slots','bookings','segment','reports','eod','completed','reporting','announcements'].forEach(v => {
     document.getElementById('view-'+v).style.display = v===view?'block':'none';
   });
   const titles = {
-    slots:     ['Slot Management',      'Create and manage slot capacity'],
-    bookings:  ['Place Work View',      'All bookings with copy-paste dispatch'],
-    segment:   ['Segment Work View',    'Bookings grouped by segment — date-sorted with remarks'],
-    reports:   ['Work Reports',         'Review, edit and download daily reports'],
-    eod:       ['EOD Report',           'End of day summary — auto-generated from your data'],
-    completed: ['Completed Works',      'Detailed completed jobs with feedback call notes & PDF'],
-    reporting: ['Reporting & Export',   'Full work report data export with CSV download']
+    slots:         ['Slot Management',      'Create and manage slot capacity'],
+    bookings:      ['Place Work View',      'All bookings with copy-paste dispatch'],
+    segment:       ['Segment Work View',    'Bookings grouped by segment — date-sorted with remarks'],
+    reports:       ['Work Reports',         'Review, edit and download daily reports'],
+    eod:           ['EOD Report',           'End of day summary — auto-generated from your data'],
+    completed:     ['Completed Works',      'Detailed completed jobs with feedback call notes & PDF'],
+    reporting:     ['Reporting & Export',   'Full work report data export with CSV download'],
+    announcements: ['Announcements',        'Post notices visible to sales team on slot cards']
   };
   document.getElementById('page-title').textContent    = titles[view][0];
   document.getElementById('page-subtitle').textContent = titles[view][1];
@@ -963,6 +989,10 @@ function showView(view) {
   if (view==='completed') {
     document.getElementById('cw-date').value = new Date().toISOString().split('T')[0];
     loadCompletedWorks();
+  }
+  if (view==='announcements') {
+    document.getElementById('ann-date').value = new Date().toISOString().split('T')[0];
+    loadAnnouncements();
   }
   if (view==='reporting') {
     const today = new Date().toISOString().split('T')[0];
@@ -1268,7 +1298,124 @@ function printEOD() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// SCHEDULING REPORTING & EXPORT
+// SEGMENT ANNOUNCEMENTS
+// ══════════════════════════════════════════════════════════════
+async function loadAnnouncements() {
+  const date  = document.getElementById('ann-date').value;
+  const segId = document.getElementById('ann-seg-filter').value;
+  const activeContainer = document.getElementById('ann-active-container');
+  const pastContainer   = document.getElementById('ann-past-container');
+  activeContainer.innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>';
+  pastContainer.innerHTML   = '';
+
+  let q = db.from('segment_announcements')
+    .select('id,segment_id,date,message,ann_type,active,created_at,segments(name),users(name)')
+    .order('date',{ascending:false}).order('created_at',{ascending:false}).limit(100);
+  if (date)  q = q.eq('date', date);
+  if (segId) q = q.eq('segment_id', segId);
+
+  const { data } = await q;
+  const all = data || [];
+  const active = all.filter(a => a.active);
+  const past   = all.filter(a => !a.active);
+
+  const renderAnn = (a) => {
+    const typeColors = {
+      warning: { bg:'#fef3c7', border:'#f59e0b', text:'#92400e', icon:'⚠️', label:'Warning' },
+      info:    { bg:'#eff6ff', border:'#3b82f6', text:'#1e40af', icon:'ℹ️', label:'Info' },
+      notice:  { bg:'#f0fdf4', border:'#16a34a', text:'#166534', icon:'📢', label:'Notice' }
+    };
+    const c = typeColors[a.ann_type] || typeColors.info;
+    return `<div style="background:${c.bg};border:1px solid ${c.border};border-radius:12px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:flex-start;gap:14px">
+      <div style="font-size:20px;flex-shrink:0">${c.icon}</div>
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+          <span style="background:${c.border};color:#fff;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">${c.label}</span>
+          <span style="background:var(--slate-100);color:var(--slate-600);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">${a.segments?.name||'All Segments'}</span>
+          <span style="font-size:12px;color:var(--slate-400)">${formatDate(a.date)}</span>
+          ${!a.active ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">INACTIVE</span>' : ''}
+        </div>
+        <div style="font-size:14px;font-weight:600;color:${c.text};line-height:1.5">${a.message}</div>
+        <div style="font-size:11px;color:var(--slate-400);margin-top:6px">Posted by ${a.users?.name||'—'} · ${new Date(a.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${a.active
+          ? `<button onclick="toggleAnn(${a.id},false)" style="padding:5px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">Deactivate</button>`
+          : `<button onclick="toggleAnn(${a.id},true)"  style="padding:5px 12px;background:#dcfce7;color:#16a34a;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">Activate</button>`}
+        <button onclick="deleteAnn(${a.id})" style="padding:5px 12px;background:#f1f5f9;color:#64748b;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">🗑</button>
+      </div>
+    </div>`;
+  };
+
+  activeContainer.innerHTML = active.length
+    ? `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400);margin-bottom:10px">🟢 Active Announcements (${active.length})</div>`
+      + active.map(renderAnn).join('')
+    : `<div style="background:#f8fafc;border:1px dashed var(--slate-200);border-radius:12px;padding:24px;text-align:center;color:var(--slate-400);font-size:13px">No active announcements for this date.</div>`;
+
+  if (past.length) {
+    pastContainer.innerHTML = `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate-400);margin-bottom:10px;margin-top:8px">Past / Inactive (${past.length})</div>`
+      + past.map(renderAnn).join('');
+  }
+}
+
+async function toggleAnn(id, active) {
+  await db.from('segment_announcements').update({ active }).eq('id', id);
+  toast(active ? 'Announcement activated!' : 'Announcement deactivated');
+  loadAnnouncements();
+}
+
+async function deleteAnn(id) {
+  if (!confirm('Delete this announcement?')) return;
+  await db.from('segment_announcements').delete().eq('id', id);
+  toast('Deleted');
+  loadAnnouncements();
+}
+
+function openAddAnnouncement() {
+  const date = document.getElementById('ann-date').value || new Date().toISOString().split('T')[0];
+  document.getElementById('new-ann-date').value    = date;
+  document.getElementById('new-ann-type').value    = 'info';
+  document.getElementById('new-ann-message').value = '';
+  document.getElementById('new-ann-save').disabled = false;
+  document.getElementById('new-ann-save').textContent = '📢 Post Announcement';
+  // Reset radio to info
+  document.getElementById('new-ann-type-info').checked = true;
+
+  // Populate segment dropdown in modal from allSegments
+  const sel = document.getElementById('new-ann-seg');
+  sel.innerHTML = '<option value="">All Segments</option>';
+  allSegments.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name;
+    if (String(s.id) === document.getElementById('ann-seg-filter').value) o.selected = true;
+    sel.appendChild(o);
+  });
+
+  openModal('modal-add-ann');
+}
+
+async function saveAnnouncement() {
+  const segId   = document.getElementById('new-ann-seg').value;
+  const date    = document.getElementById('new-ann-date').value;
+  const type    = document.getElementById('new-ann-type').value;
+  const message = document.getElementById('new-ann-message').value.trim();
+  if (!date || !message) { toast('Please fill date and message','error'); return; }
+  const btn = document.getElementById('new-ann-save');
+  btn.disabled=true; btn.textContent='Posting…';
+
+  const { error } = await db.from('segment_announcements').insert({
+    segment_id:  segId ? parseInt(segId) : null,
+    date,
+    message,
+    ann_type:    type,
+    active:      true,
+    created_by:  currentUser.id
+  });
+  if (error) { toast(error.message,'error'); btn.disabled=false; btn.textContent='📢 Post Announcement'; return; }
+  toast('Announcement posted! Sales team will see it on the slot cards.');
+  closeModal('modal-add-ann');
+  loadAnnouncements();
+}
 // ══════════════════════════════════════════════════════════════
 let schedRepData = [];
 
@@ -2291,7 +2438,65 @@ async function saveExtendWork() {
   </div>
 </div>
 
-<!-- ── Remarks Modal ──────────────────────────────────────── -->
+<!-- ── Add Announcement Modal ─────────────────────────────── -->
+<div class="modal-overlay" id="modal-add-ann">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title">📢 New Announcement</div>
+      <button class="modal-close" onclick="closeModal('modal-add-ann')">&times;</button>
+    </div>
+    <p style="font-size:13px;color:var(--slate-500);margin-bottom:16px">This message will appear on slot cards visible to the sales team when booking on the selected date.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date *</label>
+        <input class="form-input" type="date" id="new-ann-date"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Segment <span style="font-weight:400;color:var(--slate-400)">(blank = all)</span></label>
+        <select class="form-select" id="new-ann-seg">
+          <option value="">All Segments</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <div style="display:flex;gap:10px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="radio" name="ann-type-radio" value="info" id="new-ann-type-info" checked onchange="document.getElementById('new-ann-type').value='info'"/> ℹ️ Info
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="radio" name="ann-type-radio" value="warning" onchange="document.getElementById('new-ann-type').value='warning'"/> ⚠️ Warning
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="radio" name="ann-type-radio" value="notice" onchange="document.getElementById('new-ann-type').value='notice'"/> 📢 Notice
+        </label>
+      </div>
+      <input type="hidden" id="new-ann-type" value="info"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Message *</label>
+      <textarea class="form-textarea" id="new-ann-message" style="min-height:100px"
+        placeholder="e.g. There is a chance this job may extend. Please inform the customer about the possibility of rescheduling before confirming."></textarea>
+    </div>
+    <!-- Quick templates -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Quick Templates</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="ann-tpl" data-msg="There is a chance this job may extend. Please inform the customer of the possibility of rescheduling before confirming." style="padding:5px 11px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:var(--slate-600);font-family:inherit">Possible extension</button>
+        <button class="ann-tpl" data-msg="High workload expected today. Confirm customer availability before booking." style="padding:5px 11px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:var(--slate-600);font-family:inherit">High workload</button>
+        <button class="ann-tpl" data-msg="Limited staff today. Priority bookings only — please check before confirming." style="padding:5px 11px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:var(--slate-600);font-family:inherit">Staff shortage</button>
+        <button class="ann-tpl" data-msg="Weather conditions may affect service. Inform customer and proceed with caution." style="padding:5px 11px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:var(--slate-600);font-family:inherit">Weather advisory</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-ann')">Cancel</button>
+      <button class="btn btn-primary" id="new-ann-save" onclick="saveAnnouncement()">📢 Post Announcement</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
 <div class="modal-overlay" id="modal-remarks">
   <div class="modal-box" style="max-width:500px">
     <div class="modal-header">
