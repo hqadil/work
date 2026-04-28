@@ -259,17 +259,18 @@ textarea { resize:vertical;min-height:80px; }
         <textarea id="f-staff-remarks" placeholder="e.g. 2 regular staff + 1 outsider" style="min-height:60px"></textarea>
       </div>
     </div>
+
     <div id="technician-fields" style="display:none">
       <div style="background:var(--blue-50);border:1px solid var(--blue-100);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--blue-700);margin-bottom:12px">
         🔧 Each technician is tracked individually for performance analysis.
       </div>
+      <!-- Registered technician rows with dropdown -->
+      <div id="tech-rows-container" style="margin-bottom:10px"></div>
+      <button type="button" onclick="addTechRow()" style="width:100%;padding:10px;background:#eff6ff;color:#1d4ed8;border:2px dashed #93c5fd;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">+ Add Technician</button>
       <div class="form-group">
-        <label>Technician Name(s) <span style="font-size:11px;color:var(--slate-400)">(separate by comma)</span></label>
-        <input type="text" id="f-technicians" placeholder="e.g. Raju Kumar, Suresh P"/>
-      </div>
-      <div class="form-group">
-        <label>Supervisor / Lead <span style="font-size:11px;color:var(--slate-400)">(optional)</span></label>
-        <input type="text" id="f-supervisor" placeholder="Lead technician"/>
+        <label>Outside / Unregistered Staff <span style="font-size:11px;color:var(--slate-400)">(not in registry)</span></label>
+        <input type="text" id="f-technicians" placeholder="e.g. Contract worker name, Helper from outside"/>
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px">For anyone not in the technician registry</div>
       </div>
     </div>
   </div>
@@ -349,7 +350,7 @@ function formatDate(d) {
     .select(`
       id, service_details, total_amount, advance_amount,
       customers(name, phone, alt_phone, place, address, location_link),
-      slots(date, time, segments(name))
+      slots(date, time, segment_id, segments(name))
     `)
     .eq('id', parseInt(bookingId))
     .limit(1);
@@ -365,6 +366,7 @@ function formatDate(d) {
     customer_address: raw.customers?.address,
     location_link:    raw.customers?.location_link,
     segment_name:     raw.slots?.segments?.name,
+    segment_id:       raw.slots?.segment_id,
     slot_date:        raw.slots?.date,
     slot_time:        raw.slots?.time,
     service_details:  raw.service_details,
@@ -387,6 +389,10 @@ function formatDate(d) {
   const isHousekeeping = (bk.segment_name||'').toLowerCase().includes('housekeeping');
   document.getElementById('housekeeping-fields').style.display = isHousekeeping ? 'block' : 'none';
   document.getElementById('technician-fields').style.display   = isHousekeeping ? 'none'  : 'block';
+
+  // Load technician registry for dropdown — store segment_id on bookingData for later use
+  bookingData.segment_id = bk.segment_id;
+  if (!isHousekeeping) loadTechRegistry(bk.segment_id);
 
   // Pre-fill
   document.getElementById('f-exec-date').value = new Date().toISOString().split('T')[0];
@@ -443,12 +449,18 @@ async function submitReport() {
 
   if (error) { showToast(error.message,'error'); btn.disabled=false; btn.textContent='Submit Work Report'; return; }
 
-  // Sync booking status — if work is completed, mark booking as completed too
+  // Sync booking status
   if (status === 'completed') {
     await db.from('bookings').update({ status: 'completed' }).eq('id', parseInt(bookingId));
   } else if (status === 'rescheduled') {
     await db.from('bookings').update({ status: 'rescheduled' }).eq('id', parseInt(bookingId));
   }
+
+  // Save tracked technicians from dropdown rows
+  const savedReport = existing
+    ? { id: existing.id }
+    : (await db.from('work_reports').select('id').eq('booking_id', parseInt(bookingId)).maybeSingle()).data;
+  if (savedReport?.id) await saveTechRows(savedReport.id);
 
   // Capture everything for the PDF
   const isHousekeeping = document.getElementById('housekeeping-fields').style.display !== 'none';
@@ -643,6 +655,108 @@ async function saveDraft() {
   if (error) { showToast(error.message,'error'); }
   else { showToast('Draft saved!'); }
   btn.textContent='Save Draft'; btn.disabled=false;
+}
+
+// ── TECHNICIAN DROPDOWN SYSTEM ────────────────────────────────
+let registryTechs = [];
+let techRowCount   = 0;
+
+async function loadTechRegistry(segmentId) {
+  const { data } = await db.from('technicians')
+    .select('id,name,tech_code,primary_segment_id,can_help_segments,is_outsider,segments(name)')
+    .eq('is_active', true).order('name');
+  registryTechs = data || [];
+  const container = document.getElementById('tech-rows-container');
+  if (!container) return;
+  if (container.children.length === 0) addTechRow(segmentId);
+  else document.querySelectorAll('.tech-select').forEach(sel => refreshTechOptions(sel, segmentId));
+}
+
+function refreshTechOptions(sel, segmentId) {
+  const curVal = sel.value;
+  const sid = String(segmentId||'');
+  const primary   = registryTechs.filter(t => String(t.primary_segment_id) === sid);
+  const helpers   = registryTechs.filter(t => String(t.primary_segment_id) !== sid && (t.can_help_segments||[]).map(String).includes(sid));
+  const outsiders = registryTechs.filter(t => t.is_outsider && !primary.includes(t) && !helpers.includes(t));
+  const others    = registryTechs.filter(t => !primary.includes(t) && !helpers.includes(t) && !outsiders.includes(t));
+  sel.innerHTML = '<option value="">— Select technician —</option>';
+  const addGroup = (label, techs, isHelper, isOut) => {
+    if (!techs.length) return;
+    const g = document.createElement('optgroup'); g.label = label;
+    techs.forEach(t => {
+      const o = document.createElement('option'); o.value = t.id;
+      o.textContent = `${t.name} (${t.tech_code||t.segments?.name||'—'})`;
+      if (isHelper) o.dataset.helper   = 'true';
+      if (isOut)    o.dataset.outsider  = 'true';
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  };
+  addGroup('🔧 This Segment', primary, false, false);
+  addGroup('🤝 Helpers (Other Segments)', helpers, true, false);
+  addGroup('👤 Contract / Outsiders', outsiders, false, true);
+  addGroup('👥 Other Departments', others, true, false);
+  if (curVal) sel.value = curVal;
+}
+
+function addTechRow(segmentId) {
+  const container = document.getElementById('tech-rows-container');
+  if (!container) return;
+  const segId = segmentId || bookingData?.segment_id || '';
+  const rowId = ++techRowCount;
+  const row = document.createElement('div');
+  row.id = `tech-row-${rowId}`;
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
+  row.innerHTML = `
+    <select class="tech-select" id="tech-sel-${rowId}"
+      style="flex:1;padding:11px 12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;color:#1e293b;background:#f8fafc">
+      <option value="">— Select technician —</option>
+    </select>
+    <select id="tech-role-${rowId}"
+      style="width:115px;padding:11px 10px;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;color:#1e293b;background:#f8fafc">
+      <option value="technician">Technician</option>
+      <option value="lead">Lead</option>
+      <option value="helper">Helper</option>
+      <option value="driver">Driver</option>
+    </select>
+    <button type="button" onclick="removeTechRow(${rowId})"
+      style="padding:10px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer">✕</button>`;
+  container.appendChild(row);
+  refreshTechOptions(document.getElementById(`tech-sel-${rowId}`), segId);
+}
+
+function removeTechRow(rowId) {
+  document.getElementById(`tech-row-${rowId}`)?.remove();
+}
+
+function collectTechRows() {
+  const rows = [];
+  document.querySelectorAll('.tech-select').forEach(sel => {
+    if (!sel.value) return;
+    const rowId = sel.id.replace('tech-sel-','');
+    const roleEl = document.getElementById(`tech-role-${rowId}`);
+    const opt = sel.options[sel.selectedIndex];
+    rows.push({
+      technician_id: parseInt(sel.value),
+      role_on_job:   roleEl?.value || 'technician',
+      is_helper:     opt?.dataset?.helper === 'true'
+    });
+  });
+  return rows;
+}
+
+async function saveTechRows(workReportId) {
+  const rows = collectTechRows();
+  if (!rows.length) return;
+  await db.from('report_technicians').delete().eq('work_report_id', workReportId);
+  for (const r of rows) {
+    await db.from('report_technicians').insert({
+      work_report_id: workReportId,
+      technician_id:  r.technician_id,
+      role_on_job:    r.role_on_job,
+      is_helper:      r.is_helper
+    });
+  }
 }
 
 function buildPayload(isDraft) {
