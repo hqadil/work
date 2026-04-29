@@ -2,409 +2,723 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<title>Handy sQuad — Technician</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Handy sQuad — Technician Registry</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --amber:#f59e0b;--adark:#b45309;--alight:#fef3c7;--axlight:#fffbeb;
-  --white:#fff;--s800:#1e293b;--s600:#475569;--s400:#94a3b8;
-  --s200:#e2e8f0;--s100:#f1f5f9;--s50:#f8fafc;
-  --b700:#1d4ed8;--b500:#3b82f6;--b50:#eff6ff;--b100:#dbeafe;
+  --blue:#1d4ed8;--blue-l:#dbeafe;--blue-xl:#eff6ff;
+  --amber:#f59e0b;--adark:#b45309;--alight:#fef3c7;
   --green:#16a34a;--gbg:#f0fdf4;--gbd:#86efac;
   --red:#dc2626;--rbg:#fee2e2;
+  --slate-800:#1e293b;--slate-600:#475569;--slate-400:#94a3b8;
+  --slate-200:#e2e8f0;--slate-100:#f1f5f9;--slate-50:#f8fafc;
+  --white:#fff;
 }
-body{font-family:'Plus Jakarta Sans',sans-serif;background:#f1f5f9;color:var(--s800);min-height:100vh;padding-bottom:72px}
-
-/* Header */
-.hdr{background:linear-gradient(135deg,#1c1917,#292524);padding:14px 16px;position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between}
-.hdr-left{display:flex;align-items:center;gap:10px}
-.hdr-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--amber),#f97316);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
-.hdr-name{font-size:15px;font-weight:800;color:#fff}
-.hdr-role{font-size:10px;color:#fbbf24;font-weight:700;letter-spacing:.5px}
-.hdr-segs{display:flex;gap:5px;flex-wrap:wrap;padding:6px 16px 10px}
-.seg-tag{background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.3);border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;color:#fbbf24}
-
-/* Bottom nav */
-.bot-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;background:#fff;border-top:1px solid var(--s200);display:flex;box-shadow:0 -2px 8px rgba(0,0,0,.08)}
-.bn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 4px;border:none;background:transparent;cursor:pointer;color:var(--s400);font-family:inherit;position:relative;transition:color .2s}
-.bn.on{color:var(--adark)}
-.bn svg{margin-bottom:2px}
-.bn-lbl{font-size:10px;font-weight:700}
-.bn-dot{position:absolute;top:6px;right:calc(50% - 16px);background:var(--red);color:#fff;border-radius:20px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;display:none}
-
-/* Content */
-.page{padding:14px 14px 0;display:none}
-.page.on{display:block}
-
-/* Date strip for work view */
-.date-strip{display:flex;align-items:center;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
-.date-btn{flex-shrink:0;padding:8px 14px;border-radius:20px;border:2px solid var(--s200);font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:var(--s600);font-family:inherit;transition:all .15s;white-space:nowrap}
-.date-btn.on{background:var(--amber);color:#fff;border-color:var(--amber)}
-.date-inp{padding:8px 12px;border:2px solid var(--s200);border-radius:20px;font-size:12px;font-family:inherit;color:var(--s800);background:#fff;cursor:pointer}
-.date-inp:focus{outline:none;border-color:var(--amber)}
-
-/* Stats */
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-.sc{background:#fff;border-radius:12px;padding:12px;border:1px solid var(--s200);text-align:center}
-.sc-v{font-size:22px;font-weight:800;color:var(--s800)}
-.sc-l{font-size:10px;color:var(--s400);font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.3px}
-
-/* Section label */
-.sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--s400);margin-bottom:10px}
-
-/* Job card */
-.jc{background:#fff;border-radius:16px;border:1px solid var(--s200);overflow:hidden;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-.jc-bar{height:4px}
-.jc-bar.booked{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
-.jc-bar.completed{background:linear-gradient(90deg,#16a34a,#4ade80)}
-.jc-bar.rescheduled{background:linear-gradient(90deg,#d97706,#fbbf24)}
-.jc-bar.cancelled{background:linear-gradient(90deg,#dc2626,#f87171)}
-.jc-body{padding:14px 15px}
-
-/* Top row: name + status */
-.jc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.jc-name{font-size:18px;font-weight:800;line-height:1.15}
-.jc-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
-.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
-.b-booked{background:#dbeafe;color:#1d4ed8}
-.b-completed{background:#dcfce7;color:#16a34a}
-.b-rescheduled{background:#fef3c7;color:#d97706}
-.b-cancelled{background:#fee2e2;color:#dc2626}
-.b-seg{background:var(--alight);color:var(--adark)}
-
-/* Info rows */
-.jc-info{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:var(--s600);margin-bottom:6px;line-height:1.4}
-.jc-info svg{flex-shrink:0;margin-top:2px;color:var(--s400)}
-.jc-info a{color:var(--b700);font-weight:700;text-decoration:none}
-
-/* Finance bar */
-.jc-fin{display:flex;border-top:1px solid var(--s100);margin-top:10px}
-.jf{flex:1;padding:9px 0;text-align:center;border-right:1px solid var(--s100)}
-.jf:last-child{border-right:none}
-.jf-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--s400);margin-bottom:2px}
-.jf-v{font-size:13px;font-weight:800;color:var(--s800)}
-.jf-v.bl{color:var(--b700)}
-
-/* Actions — large tap targets */
-.jc-act{display:flex;border-top:1px solid var(--s100)}
-.ja{flex:1;padding:13px 6px;border:none;background:transparent;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;border-right:1px solid var(--s100);text-decoration:none;font-family:inherit;color:var(--s500);transition:background .12s}
-.ja:last-child{border-right:none}
-.ja.call{color:var(--green)}.ja.call:hover{background:var(--gbg)}
-.ja.map{color:var(--adark)}.ja.map:hover{background:var(--alight)}
-.ja.rpt{color:var(--b700)}.ja.rpt:hover{background:var(--b50)}
-.ja.off{opacity:.3;pointer-events:none}
-
-/* Empty/loading */
-.empty{text-align:center;padding:52px 20px}
-.empty .icon{font-size:44px;margin-bottom:12px}
-.empty h3{font-size:15px;font-weight:700;margin-bottom:5px}
-.empty p{font-size:13px;color:var(--s400)}
-.ld{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--s400);font-size:13px;gap:8px}
-.sp{display:inline-block;width:18px;height:18px;border:2px solid var(--s200);border-top-color:var(--amber);border-radius:50%;animation:sp .7s linear infinite}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--slate-50);color:var(--slate-800);min-height:100vh}
+.app-shell{display:flex;min-height:100vh}
+.sidebar{width:240px;background:linear-gradient(180deg,#1e293b,#334155);display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sb-logo{padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:16px}
+.sb-logo .nm{font-size:20px;font-weight:800;color:#fff} .sb-logo .nm span{color:#93c5fd}
+.sb-logo .rl{font-size:11px;color:#93c5fd;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 24px;color:rgba(255,255,255,.65);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover,.nav-item.active{color:#fff;background:rgba(255,255,255,.08);border-left-color:#93c5fd}
+.sb-bottom{margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,.1)}
+.main{margin-left:240px;flex:1}
+.topbar{background:var(--white);border-bottom:1px solid var(--slate-200);padding:16px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50}
+.page-title{font-size:20px;font-weight:800} .page-sub{font-size:13px;color:var(--slate-400);font-weight:500}
+.content{padding:28px}
+.view{display:none}.view.active{display:block}
+/* Filter */
+.filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.filter-bar input,.filter-bar select{padding:9px 13px;border:2px solid var(--slate-200);border-radius:10px;font-size:13px;font-family:inherit;color:var(--slate-800);background:var(--white)}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--blue)}
+.btn{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,var(--blue),#3b82f6);color:#fff}
+.btn-secondary{background:var(--slate-100);color:var(--slate-600)}
+.btn-sm{padding:6px 13px;font-size:12px}
+/* Cards */
+.card{background:var(--white);border-radius:16px;border:1px solid var(--slate-200);padding:22px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.kpi{background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--slate-200)}
+.kpi-val{font-size:26px;font-weight:800;color:var(--slate-800)} .kpi-lbl{font-size:12px;color:var(--slate-400);font-weight:600;margin-top:4px}
+/* Tech card grid */
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.tc{background:var(--white);border-radius:14px;border:1px solid var(--slate-200);padding:16px;transition:box-shadow .2s,transform .2s}
+.tc:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-2px)}
+.tc-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.tc-av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
+.tc-name{font-size:15px;font-weight:800;color:var(--slate-800)}
+.tc-code{font-size:11px;color:var(--slate-400);font-weight:600}
+.tc-seg{display:inline-block;background:var(--alight);color:var(--adark);padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:8px}
+.tc-stat-row{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--slate-100)}
+.tc-stat{flex:1;text-align:center}
+.tc-stat-v{font-size:16px;font-weight:800;color:var(--slate-800)} .tc-stat-l{font-size:10px;color:var(--slate-400);font-weight:600}
+.tc-pills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.pill{padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700}
+.pill-out{background:#f1f5f9;color:#64748b}
+.pill-help{background:var(--blue-l);color:var(--blue)}
+/* Table */
+.dt-wrap{background:var(--white);border-radius:14px;border:1px solid var(--slate-200);overflow:hidden}
+.dt{width:100%;border-collapse:collapse}
+.dt thead tr{background:var(--slate-50)}
+.dt th{padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--slate-200)}
+.dt td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--slate-100);vertical-align:middle}
+.dt tr:last-child td{border-bottom:none}
+.dt tr:hover td{background:var(--slate-50)}
+/* Rect status */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.b-open{background:#fee2e2;color:#dc2626} .b-in_progress{background:#fef3c7;color:#d97706}
+.b-resolved{background:#dcfce7;color:#16a34a} .b-closed{background:#f1f5f9;color:#64748b}
+/* Chart */
+.chart-wrap{position:relative;height:240px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+/* Loading */
+.ld{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--slate-400);font-size:13px;gap:8px}
+.sp{display:inline-block;width:18px;height:18px;border:2px solid var(--slate-200);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-
-<div class="hdr">
-  <div class="hdr-left">
-    <div class="hdr-av" id="hav">T</div>
-    <div>
-      <div class="hdr-name" id="hname">Loading…</div>
-      <div class="hdr-role">Technician</div>
-    </div>
+<div class="app-shell">
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="nm">Handy <span>sQuad</span></div>
+    <div class="rl">🔧 Technicians</div>
   </div>
-  <button onclick="logout()" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:6px">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-  </button>
-</div>
-<div class="hdr-segs" id="hsegs" style="background:linear-gradient(135deg,#1c1917,#292524)"></div>
-
-<!-- MAIN WORK PAGE (default — today + toggle for history) -->
-<div class="page on" id="page-work">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:2px">
-    <div class="sec" style="margin-bottom:0">My Jobs</div>
-    <button id="hist-toggle-btn" onclick="toggleHistory()" style="background:var(--b50);color:var(--b700);border:1px solid var(--b100);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
-      📅 View History
-    </button>
-  </div>
-
-  <!-- Today mode (default) -->
-  <div id="mode-today">
-    <div class="stats">
-      <div class="sc"><div class="sc-v" id="st-today">—</div><div class="sc-l">Today</div></div>
-      <div class="sc"><div class="sc-v" id="st-week">—</div><div class="sc-l">This Week</div></div>
-      <div class="sc"><div class="sc-v" id="st-month">—</div><div class="sc-l">This Month</div></div>
-    </div>
-    <div id="today-jobs"><div class="ld"><div class="sp"></div> Loading…</div></div>
-  </div>
-
-  <!-- History mode (hidden by default) -->
-  <div id="mode-history" style="display:none">
-    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
-      <input type="date" id="hist-from" class="date-inp"/>
-      <span style="font-size:12px;color:var(--s400);font-weight:600">to</span>
-      <input type="date" id="hist-to" class="date-inp"/>
-      <button onclick="loadHistory()" style="padding:8px 14px;border-radius:20px;background:var(--amber);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Apply</button>
-    </div>
-    <div id="history-jobs"></div>
-  </div>
-</div>
-
-<!-- UPCOMING PAGE -->
-<div class="page" id="page-upcoming">
-  <div class="stats" style="margin-top:2px">
-    <div class="sc"><div class="sc-v" id="su-count">—</div><div class="sc-l">Upcoming</div></div>
-    <div class="sc"><div class="sc-v" id="su-week">—</div><div class="sc-l">This Week</div></div>
-    <div class="sc"><div class="sc-v" id="su-total">—</div><div class="sc-l">Total ₹</div></div>
-  </div>
-  <div class="date-strip" id="upcoming-dates"></div>
-  <div id="upcoming-jobs"><div class="ld"><div class="sp"></div></div></div>
-</div>
-
-<!-- BOTTOM NAV -->
-<nav class="bot-nav">
-  <button class="bn on" id="bn-work" onclick="switchPage('work',this)">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    <span class="bn-lbl">My Jobs</span>
-    <span class="bn-dot" id="bn-dot">0</span>
-  </button>
-  <button class="bn" id="bn-upcoming" onclick="switchPage('upcoming',this)">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    <span class="bn-lbl">Upcoming</span>
-  </button>
+  <a class="nav-item active" href="#" onclick="showView('registry',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Registry
+  </a>
+  <a class="nav-item" href="#" onclick="showView('analysis',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analysis
+  </a>
+  <a class="nav-item" href="#" onclick="showView('dailyreview',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+    Daily Review
+  </a>
+  <a class="nav-item" href="#" onclick="showView('rectifications',this);return false">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Rectifications
+  </a>
+  <a class="nav-item" href="dashboard-scheduling.html" style="margin-top:auto">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Scheduling
+  </a>
+  <div class="sb-bottom"><div id="user-badge-sidebar"></div></div>
 </nav>
 
-<script>
-var {createClient}=supabase;
-var db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+<div class="main">
+  <div class="topbar">
+    <div><div class="page-title" id="page-title">Technician Registry</div><div class="page-sub" id="page-sub">All field staff and their segments</div></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div id="user-badge-top"></div>
+    </div>
+  </div>
 
-async function logout(){await db.auth.signOut();window.location.href='index.html';}
+  <div class="content">
 
-function toast(msg,type='success'){
-  let c=document.getElementById('toast-container');
-  if(!c){c=document.createElement('div');c.id='toast-container';c.style.cssText='position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;';document.body.appendChild(c);}
-  const t=document.createElement('div');
-  t.style.cssText=`padding:12px 18px;border-radius:10px;color:#fff;font-size:14px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.15);max-width:300px;background:${type==='error'?'#dc2626':type==='warning'?'#d97706':'#1d4ed8'};`;
-  t.textContent=msg;c.appendChild(t);setTimeout(()=>t.remove(),3000);
-}
+    <!-- REGISTRY VIEW -->
+    <div class="view active" id="view-registry">
+      <div class="filter-bar">
+        <select id="reg-seg"><option value="">All Segments</option></select>
+        <select id="reg-type">
+          <option value="">All Types</option>
+          <option value="false">Regular Staff</option>
+          <option value="true">Outsider / Contract</option>
+        </select>
+        <input type="text" id="reg-search" placeholder="Search name or code…" oninput="renderRegistry()"/>
+        <button class="btn btn-primary btn-sm" onclick="openAddTech()">+ Add Technician</button>
+        <a href="dashboard-scheduling.html" class="btn btn-secondary btn-sm">← Scheduling</a>
+      </div>
+      <div class="kpi-row" id="reg-kpis"></div>
+      <div class="tech-grid" id="registry-grid"></div>
+    </div>
 
-let currentUser=null;
-let mySegIds=[];
-let historyLoaded=false;
-let showingHistory=false;
-let upcomingData=[];
-
-(async()=>{
-  const {data:{session}}=await db.auth.getSession();
-  if(!session){window.location.href='index.html';return;}
-  const {data:u}=await db.from('users').select('*').eq('id',session.user.id).single();
-  if(!u||u.role!=='technician'){alert('Access denied');await db.auth.signOut();window.location.href='index.html';return;}
-  currentUser=u;
-
-  document.getElementById('hav').textContent=u.name.charAt(0).toUpperCase();
-  document.getElementById('hname').textContent=u.name;
-
-  await initSegments();
-  await loadStats();
-  await loadTodayJobs();
-})();
-
-async function initSegments(){
-  const {data:assigned}=await db.from('technician_segments').select('segment_id,segments(id,name)').eq('user_id',currentUser.id);
-  const sm={};
-  if(assigned?.length){
-    assigned.forEach(a=>{if(a.segment_id)sm[String(a.segment_id)]=a.segments?.name||'';});
-  } else {
-    const {data:past}=await db.from('report_technicians').select('work_reports(bookings(slots(segment_id,segments(name))))').eq('technician_user_id',currentUser.id);
-    (past||[]).forEach(p=>{const s=p.work_reports?.bookings?.slots;if(s?.segment_id)sm[String(s.segment_id)]=s.segments?.name||'';});
-  }
-  mySegIds=Object.keys(sm);
-  const names=Object.values(sm).filter(Boolean);
-  document.getElementById('hsegs').innerHTML=names.length
-    ?names.map(n=>`<span class="seg-tag">${n}</span>`).join('')
-    :'<span class="seg-tag">All Segments</span>';
-}
-
-async function loadStats(){
-  const today=new Date().toISOString().split('T')[0];
-  const weekStart=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
-  const monthStart=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0];
-  const {data}=await db.from('bookings').select('id,status,slots(date,segment_id)');
-  const all=data||[];
-  const mine=mySegIds.length?all.filter(b=>mySegIds.includes(String(b.slots?.segment_id))):all;
-  const tc=mine.filter(b=>b.slots?.date===today&&['booked','rescheduled'].includes(b.status)).length;
-  document.getElementById('st-today').textContent=tc;
-  document.getElementById('st-week').textContent=mine.filter(b=>b.slots?.date>=weekStart&&['booked','rescheduled','completed'].includes(b.status)).length;
-  document.getElementById('st-month').textContent=mine.filter(b=>b.slots?.date>=monthStart&&b.status==='completed').length;
-  if(tc>0){const d=document.getElementById('bn-dot');d.textContent=tc;d.style.display='block';}
-
-  // Upcoming stats
-  const nWeek=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-  const up=mine.filter(b=>b.slots?.date>today&&['booked','rescheduled'].includes(b.status));
-  document.getElementById('su-count').textContent=up.length;
-  document.getElementById('su-week').textContent=up.filter(b=>b.slots?.date<=nWeek).length;
-}
-
-async function loadTodayJobs(){
-  const today=new Date().toISOString().split('T')[0];
-  const c=document.getElementById('today-jobs');
-  c.innerHTML='<div class="ld"><div class="sp"></div> Loading…</div>';
-  const jobs=await fetchJobs({date:today,statuses:['booked','rescheduled','completed']});
-  renderCards(c,jobs,'No jobs today','✅','Check upcoming for future jobs');
-}
-
-async function loadHistory(){
-  const from=document.getElementById('hist-from').value;
-  const to=document.getElementById('hist-to').value;
-  const c=document.getElementById('history-jobs');
-  c.innerHTML='<div class="ld"><div class="sp"></div></div>';
-  let q=db.from('bookings').select(`id,status,service_details,total_amount,advance_amount,
-    customers(name,phone,alt_phone,place,address,location_link),
-    slots(id,date,time,segment_id,segments(name))`).order('slots(date)',{ascending:false}).limit(200);
-  if(from)q=q.gte('slots.date',from);
-  if(to)q=q.lte('slots.date',to);
-  const{data}=await q;
-  let jobs=(data||[]).filter(b=>b.slots?.date);
-  if(mySegIds.length)jobs=jobs.filter(b=>mySegIds.includes(String(b.slots?.segment_id)));
-  renderCards(c,jobs,'No jobs in this range','📭','Try a wider date range');
-}
-
-async function loadUpcomingPage(){
-  const today=new Date().toISOString().split('T')[0];
-  const c=document.getElementById('upcoming-jobs');
-  c.innerHTML='<div class="ld"><div class="sp"></div></div>';
-  const jobs=await fetchJobs({dateGt:today,statuses:['booked','rescheduled']});
-  upcomingData=jobs;
-
-  // Build date pills
-  const dates=[...new Set(jobs.map(b=>b.slots?.date).filter(Boolean))].sort();
-  const bar=document.getElementById('upcoming-dates');
-  bar.innerHTML=`<button class="date-btn on" onclick="filterUpcoming('all',this)">All (${jobs.length})</button>`
-    +dates.map(d=>{
-      const cnt=jobs.filter(b=>b.slots?.date===d).length;
-      return `<button class="date-btn" onclick="filterUpcoming('${d}',this)">${fmtDate(d)} <span style="background:rgba(0,0,0,.08);border-radius:10px;padding:1px 5px;font-size:10px">${cnt}</span></button>`;
-    }).join('');
-
-  // Total amount
-  const total=jobs.reduce((a,b)=>a+Number(b.total_amount||0),0);
-  document.getElementById('su-total').textContent=fmtCur(total).replace('₹','');
-
-  renderCards(c,jobs,'No upcoming jobs','📅','Check back later');
-}
-
-function filterUpcoming(date,el){
-  document.querySelectorAll('.date-btn').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  const filtered=date==='all'?upcomingData:upcomingData.filter(b=>b.slots?.date===date);
-  renderCards(document.getElementById('upcoming-jobs'),filtered,'No jobs for this date','📅','');
-}
-
-async function fetchJobs(f={}){
-  let q=db.from('bookings').select(`id,status,service_details,total_amount,advance_amount,attachment_link,
-    customers(name,phone,alt_phone,place,address,location_link),
-    slots(id,date,time,segment_id,segments(name))`);
-  if(f.date)    q=q.eq('slots.date',f.date);
-  if(f.dateGt)  q=q.gt('slots.date',f.dateGt);
-  if(f.dateLte) q=q.lte('slots.date',f.dateLte);
-  if(f.statuses)q=q.in('status',f.statuses);
-  q=q.order('slots(time)',{ascending:true}).limit(150);
-  const{data}=await q;
-  let jobs=data||[];
-  if(mySegIds.length)jobs=jobs.filter(b=>mySegIds.includes(String(b.slots?.segment_id)));
-  return jobs;
-}
-
-function renderCards(c,jobs,emptyMsg,emptyIcon,emptyHint){
-  if(!jobs.length){
-    c.innerHTML=`<div class="empty"><div class="icon">${emptyIcon}</div><h3>${emptyMsg}</h3><p>${emptyHint}</p></div>`;
-    return;
-  }
-  c.innerHTML=jobs.map(card).join('');
-}
-
-function card(b){
-  const bal=Math.max(0,Number(b.total_amount||0)-Number(b.advance_amount||0));
-  const st=b.status||'booked';
-  const hasLoc=b.customers?.location_link;
-  const hasPhone=b.customers?.phone;
-  const seg=b.slots?.segments?.name||'';
-  const stBg={booked:'#dbeafe',completed:'#dcfce7',rescheduled:'#fef3c7',cancelled:'#fee2e2'};
-  const stFg={booked:'#1d4ed8',completed:'#16a34a',rescheduled:'#d97706',cancelled:'#dc2626'};
-  return `<div class="jc">
-    <div class="jc-bar ${st}"></div>
-    <div class="jc-body">
-      <div class="jc-top">
-        <div style="flex:1">
-          <div class="jc-name">${esc(b.customers?.name||'—')}</div>
-          <div class="jc-meta">
-            <span class="badge" style="background:${stBg[st]||'#f1f5f9'};color:${stFg[st]||'#475569'}">${st}</span>
-            ${seg?`<span class="badge b-seg">${esc(seg)}</span>`:''}
-          </div>
+    <!-- ANALYSIS VIEW -->
+    <div class="view" id="view-analysis">
+      <div class="filter-bar">
+        <label style="font-size:13px;font-weight:600;color:var(--slate-600)">From:</label>
+        <input type="date" id="an-from"/>
+        <label style="font-size:13px;font-weight:600;color:var(--slate-600)">To:</label>
+        <input type="date" id="an-to"/>
+        <select id="an-seg"><option value="">All Segments</option></select>
+        <button class="btn btn-primary btn-sm" onclick="loadAnalysis()">Apply</button>
+      </div>
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-title">Jobs per Technician</div>
+          <div class="chart-wrap"><canvas id="chart-jobs"></canvas></div>
         </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:10px">
-          <div style="font-size:15px;font-weight:800;color:var(--b700)">${fmtCur(b.total_amount)}</div>
-          <div style="font-size:10px;color:var(--s400)">#${b.id}</div>
+        <div class="card">
+          <div class="card-title">Revenue per Technician</div>
+          <div class="chart-wrap"><canvas id="chart-rev"></canvas></div>
         </div>
       </div>
-      ${hasPhone?`<div class="jc-info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><a href="tel:${esc(b.customers.phone)}">${esc(b.customers.phone)}</a>${b.customers.alt_phone?` / ${esc(b.customers.alt_phone)}`:''}</div>`:''}
-      <div class="jc-info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span><strong>${fmtDate(b.slots?.date)}</strong> · ${fmtTime(b.slots?.time)}</span></div>
-      ${hasLoc?`<div class="jc-info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><a href="${esc(b.customers.location_link)}" target="_blank">📍 ${esc(b.customers?.place||'Open Map')} ↗</a></div>`
-      :b.customers?.place?`<div class="jc-info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${esc(b.customers.place)}</span></div>`:''}
-      ${b.service_details?`<div class="jc-info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><span>${esc(b.service_details.substring(0,80)+(b.service_details.length>80?'…':''))}</span></div>`:''}
-      ${b.customers?.address?`<div class="jc-info"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>${esc(b.customers.address)}</span></div>`:''}
+      <div class="card">
+        <div class="card-title">Technician Performance Table</div>
+        <div id="analysis-table"></div>
+      </div>
     </div>
-    <div class="jc-fin">
-      <div class="jf"><div class="jf-l">Total</div><div class="jf-v">${fmtCur(b.total_amount)}</div></div>
-      <div class="jf"><div class="jf-l">Advance</div><div class="jf-v">${fmtCur(b.advance_amount||0)}</div></div>
-      <div class="jf"><div class="jf-l">Balance</div><div class="jf-v bl">${fmtCur(bal)}</div></div>
+
+    <!-- DAILY REVIEW VIEW -->
+    <div class="view" id="view-dailyreview">
+      <div class="filter-bar">
+        <input type="date" id="dr-date"/>
+        <select id="dr-seg"><option value="">All Segments</option></select>
+        <button class="btn btn-primary btn-sm" onclick="loadDailyReview()">📋 Load Review</button>
+      </div>
+      <div id="daily-review-container"></div>
     </div>
-    <div class="jc-act">
-      ${hasPhone?`<a href="tel:${esc(b.customers.phone)}" class="ja call"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</a>`:`<span class="ja off"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.06 6.06l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> No phone</span>`}
-      ${hasLoc?`<a href="${esc(b.customers.location_link)}" target="_blank" class="ja map"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Map</a>`:`<span class="ja off"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> No map</span>`}
-      <a href="work-report.html?booking_id=${b.id}" class="ja rpt"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Report</a>
+
+    <!-- RECTIFICATIONS VIEW -->
+    <div class="view" id="view-rectifications">
+      <div class="filter-bar">
+        <select id="rect-status">
+          <option value="">All Status</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="rect-seg"><option value="">All Segments</option></select>
+        <input type="date" id="rect-from"/>
+        <input type="date" id="rect-to"/>
+        <button class="btn btn-primary btn-sm" onclick="loadRectifications()">Apply</button>
+        <button class="btn btn-sm" style="background:var(--rbg);color:var(--red);border:1px solid #fca5a5" onclick="openAddRect()">⚠️ Log Issue</button>
+      </div>
+      <div id="rect-container"></div>
     </div>
-  </div>`;
+
+  </div>
+</div>
+</div>
+
+<!-- Add Technician Modal -->
+<div class="modal-overlay" id="modal-add-tech">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title">+ Add Technician</div>
+      <button class="modal-close" onclick="closeModal('modal-add-tech')">&times;</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tech Code</label><input class="form-input" id="at-code" placeholder="T-023"/></div>
+      <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="at-name" placeholder="Full name"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Primary Segment *</label>
+      <select class="form-select" id="at-seg"><option value="">Select segment</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Can Also Help In <span style="font-size:11px;font-weight:400;color:var(--slate-400)">(multi-select with Ctrl/Cmd)</span></label>
+      <select class="form-select" id="at-help-segs" multiple style="min-height:100px"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="at-phone" placeholder="Optional"/></div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:24px">
+        <input type="checkbox" id="at-outsider" style="width:16px;height:16px;accent-color:var(--blue)"/>
+        <label for="at-outsider" style="font-size:14px;font-weight:600;cursor:pointer">Outsider / Contract</label>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="at-notes" placeholder="Optional notes…"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-tech')">Cancel</button>
+      <button class="btn btn-primary" id="at-save" onclick="saveTech()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rectification Modal -->
+<div class="modal-overlay" id="modal-add-rect">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Log Rectification Issue</div>
+      <button class="modal-close" onclick="closeModal('modal-add-rect')">&times;</button>
+    </div>
+    <p style="font-size:13px;color:var(--slate-500);margin-bottom:16px">Use this to flag jobs that did not meet expectations — including cleaning services.</p>
+    <div class="form-group">
+      <label class="form-label">Booking # *</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" type="number" id="rect-booking-id" placeholder="Enter booking ID"/>
+        <button class="btn btn-secondary btn-sm" onclick="lookupBooking()">Lookup</button>
+      </div>
+      <div id="rect-booking-preview" style="margin-top:8px;font-size:13px;color:var(--slate-600)"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Issue Description *</label>
+      <textarea class="form-textarea" id="rect-issue" placeholder="Describe what went wrong or didn't meet expectations…" style="min-height:90px"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Rectification Date</label>
+        <input class="form-input" type="date" id="rect-fix-date" placeholder="When to fix"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="rect-new-status">
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-rect')">Cancel</button>
+      <button class="btn btn-primary" id="rect-save-btn" onclick="saveRect()">⚠️ Log Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Resolve Rectification Modal -->
+<div class="modal-overlay" id="modal-resolve-rect">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title">✅ Resolve Issue</div>
+      <button class="modal-close" onclick="closeModal('modal-resolve-rect')">&times;</button>
+    </div>
+    <input type="hidden" id="resolve-rect-id"/>
+    <div class="form-group">
+      <label class="form-label">Resolution Notes *</label>
+      <textarea class="form-textarea" id="resolve-notes" placeholder="What was done to fix this issue…" style="min-height:80px"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">New Status</label>
+      <select class="form-select" id="resolve-status">
+        <option value="resolved">Resolved</option>
+        <option value="closed">Closed</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-resolve-rect')">Cancel</button>
+      <button class="btn btn-primary" id="resolve-save-btn" onclick="saveResolve()">✅ Save Resolution</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentUser=null, allSegments=[], allTechs=[], chartJobs=null, chartRev=null;
+const PALETTE=['#1d4ed8','#f59e0b','#16a34a','#dc2626','#8b5cf6','#ec4899','#06b6d4','#f97316','#64748b','#0d9488'];
+
+(async()=>{
+  currentUser = await requireAuth(['scheduling','admin']);
+  if (!currentUser) return;
+  renderUserBadge(currentUser,'user-badge-top');
+  renderUserBadge(currentUser,'user-badge-sidebar');
+
+  const {data:segs} = await db.from('segments').select('id,name').order('name');
+  allSegments = segs||[];
+  ['reg-seg','an-seg','dr-seg','rect-seg','at-seg','at-help-segs'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(id!=='at-help-segs') el.innerHTML=`<option value="">All Segments</option>`;
+    allSegments.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.name;el.appendChild(o);});
+  });
+
+  await loadTechs();
+  renderRegistry();
+  renderKPIs();
+
+  const today=new Date().toISOString().split('T')[0];
+  const monthAgo=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
+  document.getElementById('an-from').value=monthAgo;
+  document.getElementById('an-to').value=today;
+  document.getElementById('dr-date').value=today;
+  document.getElementById('rect-from').value=monthAgo;
+  document.getElementById('rect-to').value=today;
+})();
+
+// ── REGISTRY ──────────────────────────────────────────────────
+async function loadTechs(){
+  const{data}=await db.from('technicians').select('*,segments(name)').order('tech_code');
+  allTechs=data||[];
 }
 
-function toggleHistory(){
-  showingHistory=!showingHistory;
-  document.getElementById('mode-today').style.display=showingHistory?'none':'block';
-  document.getElementById('mode-history').style.display=showingHistory?'block':'none';
-  const btn=document.getElementById('hist-toggle-btn');
-  if(showingHistory){
-    btn.textContent='← Back to Today';
-    btn.style.background='var(--alight)';btn.style.color='var(--adark)';btn.style.borderColor='var(--amber)';
-    if(!historyLoaded){
-      historyLoaded=true;
-      const t=new Date().toISOString().split('T')[0];
-      const m=new Date(Date.now()-30*86400000).toISOString().split('T')[0];
-      document.getElementById('hist-from').value=m;
-      document.getElementById('hist-to').value=t;
-      loadHistory();
-    }
-  } else {
-    btn.textContent='📅 View History';
-    btn.style.background='var(--b50)';btn.style.color='var(--b700)';btn.style.borderColor='var(--b100)';
+function renderKPIs(){
+  const active=allTechs.filter(t=>t.is_active);
+  const outsiders=allTechs.filter(t=>t.is_outsider&&t.is_active);
+  const segs=[...new Set(active.map(t=>t.primary_segment_id).filter(Boolean))];
+  document.getElementById('reg-kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-val">${active.length}</div><div class="kpi-lbl">Active Technicians</div></div>
+    <div class="kpi"><div class="kpi-val">${active.length-outsiders.length}</div><div class="kpi-lbl">Regular Staff</div></div>
+    <div class="kpi"><div class="kpi-val">${outsiders.length}</div><div class="kpi-lbl">Outsiders / Contract</div></div>
+    <div class="kpi"><div class="kpi-val">${segs.length}</div><div class="kpi-lbl">Segments Covered</div></div>`;
+}
+
+function renderRegistry(){
+  const segFilter=document.getElementById('reg-seg').value;
+  const typeFilter=document.getElementById('reg-type').value;
+  const search=document.getElementById('reg-search').value.toLowerCase();
+  let list=allTechs.filter(t=>{
+    if(!t.is_active)return false;
+    if(segFilter&&String(t.primary_segment_id)!==segFilter)return false;
+    if(typeFilter!==''&&String(t.is_outsider)!==typeFilter)return false;
+    if(search&&!t.name.toLowerCase().includes(search)&&!t.tech_code?.toLowerCase().includes(search))return false;
+    return true;
+  });
+  const grid=document.getElementById('registry-grid');
+  if(!list.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--slate-400)">No technicians found</div>';return;}
+  const colorsForSeg={};
+  allSegments.forEach((s,i)=>{colorsForSeg[s.id]=PALETTE[i%PALETTE.length];});
+  grid.innerHTML=list.map(t=>{
+    const col=colorsForSeg[t.primary_segment_id]||'#64748b';
+    const helpSegs=(t.can_help_segments||[]).map(sid=>{
+      const s=allSegments.find(x=>x.id===sid);
+      return s?`<span class="pill pill-help">${s.name}</span>`:'';
+    }).join('');
+    return `<div class="tc">
+      <div class="tc-top">
+        <div class="tc-av" style="background:${col}">${t.name.charAt(0).toUpperCase()}</div>
+        <div>
+          <div class="tc-name">${t.name}</div>
+          <div class="tc-code">${t.tech_code||''} ${t.is_outsider?'· <span style="color:#dc2626;font-weight:700">Outsider</span>':''}</div>
+        </div>
+      </div>
+      <div class="tc-seg">${t.segments?.name||'—'}</div>
+      ${helpSegs?`<div class="tc-pills"><span style="font-size:10px;font-weight:600;color:var(--slate-400);margin-right:4px">Also:</span>${helpSegs}</div>`:''}
+      ${t.phone?`<div style="font-size:12px;color:var(--slate-400);margin-bottom:4px">📞 ${t.phone}</div>`:''}
+      <div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--slate-100)">
+        <button class="btn btn-secondary btn-sm" onclick="openEditTech(${t.id})">✏️ Edit</button>
+        <button class="btn btn-sm" style="background:var(--rbg);color:var(--red);border:1px solid #fca5a5" onclick="deactivateTech(${t.id},'${t.name}')">Deactivate</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ADD / EDIT TECH ───────────────────────────────────────────
+let editTechId=null;
+function openAddTech(){
+  editTechId=null;
+  document.getElementById('at-code').value='';
+  document.getElementById('at-name').value='';
+  document.getElementById('at-seg').value='';
+  document.getElementById('at-phone').value='';
+  document.getElementById('at-outsider').checked=false;
+  document.getElementById('at-notes').value='';
+  Array.from(document.getElementById('at-help-segs').options).forEach(o=>o.selected=false);
+  document.querySelector('#modal-add-tech .modal-title').textContent='+ Add Technician';
+  openModal('modal-add-tech');
+}
+async function openEditTech(id){
+  editTechId=id;
+  const t=allTechs.find(x=>x.id===id);if(!t)return;
+  document.getElementById('at-code').value=t.tech_code||'';
+  document.getElementById('at-name').value=t.name||'';
+  document.getElementById('at-seg').value=t.primary_segment_id||'';
+  document.getElementById('at-phone').value=t.phone||'';
+  document.getElementById('at-outsider').checked=t.is_outsider||false;
+  document.getElementById('at-notes').value=t.notes||'';
+  const helps=t.can_help_segments||[];
+  Array.from(document.getElementById('at-help-segs').options).forEach(o=>o.selected=helps.includes(parseInt(o.value)));
+  document.querySelector('#modal-add-tech .modal-title').textContent='✏️ Edit Technician';
+  openModal('modal-add-tech');
+}
+async function saveTech(){
+  const name=document.getElementById('at-name').value.trim();
+  const segId=document.getElementById('at-seg').value;
+  if(!name||!segId){toast('Name and primary segment are required','error');return;}
+  const btn=document.getElementById('at-save');
+  btn.disabled=true;btn.textContent='Saving…';
+  const helpSegs=Array.from(document.getElementById('at-help-segs').selectedOptions).map(o=>parseInt(o.value));
+  const payload={
+    tech_code:document.getElementById('at-code').value.trim()||null,
+    name,
+    primary_segment_id:parseInt(segId),
+    can_help_segments:helpSegs.length?helpSegs:null,
+    phone:document.getElementById('at-phone').value.trim()||null,
+    is_outsider:document.getElementById('at-outsider').checked,
+    notes:document.getElementById('at-notes').value.trim()||null
+  };
+  let error;
+  if(editTechId){({error}=await db.from('technicians').update(payload).eq('id',editTechId));}
+  else{({error}=await db.from('technicians').insert(payload));}
+  if(error){toast(error.message,'error');btn.disabled=false;btn.textContent='💾 Save';return;}
+  toast(editTechId?'Updated!':'Technician added!');
+  closeModal('modal-add-tech');
+  await loadTechs();renderRegistry();renderKPIs();
+  btn.disabled=false;btn.textContent='💾 Save';
+}
+async function deactivateTech(id,name){
+  if(!confirm(`Deactivate ${name}?`))return;
+  await db.from('technicians').update({is_active:false}).eq('id',id);
+  toast(`${name} deactivated`);
+  await loadTechs();renderRegistry();renderKPIs();
+}
+
+// ── ANALYSIS ──────────────────────────────────────────────────
+async function loadAnalysis(){
+  const from=document.getElementById('an-from').value;
+  const to=document.getElementById('an-to').value;
+  const segId=document.getElementById('an-seg').value;
+  document.getElementById('analysis-table').innerHTML='<div class="ld"><div class="sp"></div> Loading…</div>';
+
+  let q=db.from('report_technicians').select(`
+    technician_id,role_on_job,is_helper,
+    technicians(id,name,tech_code,primary_segment_id,is_outsider,segments(name)),
+    work_reports(id,final_amount,work_status,executed_date,
+      bookings(slots(date,segment_id,segments(name))))
+  `).limit(2000);
+
+  const{data}=await q;
+  let rows=(data||[]).filter(r=>r.technicians&&r.work_reports);
+  if(from)rows=rows.filter(r=>(r.work_reports?.executed_date||r.work_reports?.bookings?.slots?.date||'')>=from);
+  if(to)rows=rows.filter(r=>(r.work_reports?.executed_date||r.work_reports?.bookings?.slots?.date||'')<=to);
+  if(segId)rows=rows.filter(r=>String(r.work_reports?.bookings?.slots?.segment_id)===segId);
+
+  // Count how many technicians are on each work report for equal revenue split
+  const techsPerReport={};
+  rows.forEach(r=>{ const wid=r.work_reports?.id; if(wid) techsPerReport[wid]=(techsPerReport[wid]||0)+1; });
+
+  const techMap={};
+  rows.forEach(r=>{
+    const t=r.technicians;const tid=t.id;
+    const wid=r.work_reports?.id;
+    const techCount=techsPerReport[wid]||1;
+    const splitRevenue=Number(r.work_reports?.final_amount||0)/techCount; // equal split
+    if(!techMap[tid])techMap[tid]={name:t.name,code:t.tech_code,seg:t.segments?.name,outsider:t.is_outsider,jobs:0,completed:0,revenue:0,helperJobs:0};
+    techMap[tid].jobs++;
+    if(r.work_reports?.work_status==='completed'){techMap[tid].completed++;techMap[tid].revenue+=splitRevenue;}
+    if(r.is_helper)techMap[tid].helperJobs++;
+  });
+  const sorted=Object.values(techMap).sort((a,b)=>b.jobs-a.jobs);
+  if(!sorted.length){document.getElementById('analysis-table').innerHTML='<div class="ld">No data for selected filters.</div>';renderCharts([],[]);return;}
+  renderCharts(sorted.slice(0,10),sorted.slice(0,10));
+  document.getElementById('analysis-table').innerHTML=`<div style="overflow-x:auto"><table class="dt">
+    <thead><tr>${['Technician','Code','Segment','Total Jobs','Completed','Completion %','Revenue (Split)','Helper Jobs','Type'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${sorted.map((t,i)=>{
+      const pct=t.jobs?((t.completed/t.jobs)*100).toFixed(0)+'%':'—';
+      return `<tr>
+        <td><div style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:${PALETTE[i%PALETTE.length]};color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${t.name.charAt(0)}</div><span style="font-weight:700">${t.name}</span></div></td>
+        <td style="color:var(--slate-400)">${t.code||'—'}</td>
+        <td><span style="background:var(--alight);color:var(--adark);padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700">${t.seg||'—'}</span></td>
+        <td style="font-weight:700">${t.jobs}</td>
+        <td style="color:var(--green);font-weight:600">${t.completed}</td>
+        <td>${pct}</td>
+        <td style="font-weight:700;color:var(--blue)">${formatCurrency(t.revenue)}</td>
+        <td>${t.helperJobs||0}</td>
+        <td>${t.outsider?'<span style="background:var(--rbg);color:var(--red);padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700">Outsider</span>':'<span style="background:var(--gbg);color:var(--green);padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700">Regular</span>'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+function renderCharts(jobs,rev){
+  const labels=jobs.map(t=>t.name);
+  if(chartJobs)chartJobs.destroy();
+  chartJobs=new Chart(document.getElementById('chart-jobs').getContext('2d'),{
+    type:'bar',data:{labels,datasets:[{label:'Jobs',data:jobs.map(t=>t.jobs),backgroundColor:PALETTE.slice(0,labels.length),borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'}},x:{grid:{display:false}}}}
+  });
+  if(chartRev)chartRev.destroy();
+  chartRev=new Chart(document.getElementById('chart-rev').getContext('2d'),{
+    type:'bar',data:{labels,datasets:[{label:'Revenue',data:rev.map(t=>t.revenue),backgroundColor:PALETTE.slice(0,labels.length),borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹'+Number(c.raw).toLocaleString('en-IN')}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'₹'+Number(v/1000).toFixed(0)+'k'},grid:{color:'#f1f5f9'}},x:{grid:{display:false}}}}
+  });
+}
+
+// ── DAILY REVIEW ──────────────────────────────────────────────
+async function loadDailyReview(){
+  const date=document.getElementById('dr-date').value;
+  const segId=document.getElementById('dr-seg').value;
+  const container=document.getElementById('daily-review-container');
+  container.innerHTML='<div class="ld"><div class="sp"></div> Loading…</div>';
+  if(!date){container.innerHTML='<div class="ld">Please select a date.</div>';return;}
+
+  const{data:rts}=await db.from('report_technicians').select(`
+    technician_id,role_on_job,is_helper,
+    technicians(id,name,tech_code,segments(name)),
+    users(name),
+    work_reports(id,work_status,final_amount,site_in,site_out,executed_date,notes,issues_logged,
+      bookings(id,service_details,customers(name,phone,place),slots(date,time,segment_id,segments(name))))
+  `).eq('work_reports.executed_date',date).limit(500);
+
+  let entries=(rts||[]).filter(r=>r.work_reports&&(r.technicians||r.users));
+  if(segId) entries=entries.filter(r=>String(r.work_reports?.bookings?.slots?.segment_id)===segId);
+
+  if(!entries.length){
+    container.innerHTML='<div class="ld">No work reports found for this date.</div>';return;
   }
+
+  // Group by technician (use technicians.id or users.name as key)
+  const byTech={};
+  entries.forEach(r=>{
+    const techName = r.technicians?.name || r.users?.name || 'Unknown';
+    const techCode = r.technicians?.tech_code || '';
+    const segName  = r.technicians?.segments?.name || '';
+    // Use technician_id if available, else fall back to name-based key
+    const tid = r.technician_id ? `t_${r.technician_id}` : `u_${techName}`;
+    if(!byTech[tid])byTech[tid]={name:techName,code:techCode,seg:segName,jobs:[]};
+    byTech[tid].jobs.push(r);
+  });
+
+  const dateLabel=new Date(date).toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const total=Object.keys(byTech).length;
+
+  container.innerHTML=`<div style="font-size:14px;font-weight:700;color:var(--slate-500);margin-bottom:16px">Daily Review — ${dateLabel} · ${total} technician${total!==1?'s':''}</div>`
+  +Object.values(byTech).map(tech=>{
+    const totalRev=tech.jobs.reduce((a,r)=>a+Number(r.work_reports?.final_amount||0),0);
+    return `<div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center">${tech.name.charAt(0)}</div>
+          <div>
+            <div style="font-size:16px;font-weight:800">${tech.name}</div>
+            <div style="font-size:12px;color:var(--slate-400)">${tech.code||''} · ${tech.seg||'—'}</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:800;color:var(--blue)">${formatCurrency(totalRev)}</div>
+          <div style="font-size:11px;color:var(--slate-400)">${tech.jobs.length} job${tech.jobs.length!==1?'s':''}</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+      <table class="dt" style="width:100%">
+        <thead><tr>${['Booking','Customer','Place','Segment','Time','In','Out','Status','Amt','Issues','Action'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${tech.jobs.map(r=>{
+          const wr=r.work_reports; const bk=wr.bookings;
+          const hasIssue=wr.issues_logged&&wr.issues_logged.trim();
+          return `<tr>
+            <td style="font-weight:700;color:var(--blue)">#${bk?.id||'—'}</td>
+            <td><div style="font-weight:600">${bk?.customers?.name||'—'}</div><div style="font-size:11px;color:var(--slate-400)">${bk?.customers?.phone||''}</div></td>
+            <td>${bk?.customers?.place||'—'}</td>
+            <td><span style="background:var(--alight);color:var(--adark);padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700">${bk?.slots?.segments?.name||'—'}</span></td>
+            <td>${formatTime(bk?.slots?.time)}</td>
+            <td>${wr.site_in?formatTime(wr.site_in):'—'}</td>
+            <td>${wr.site_out?formatTime(wr.site_out):'—'}</td>
+            <td><span class="badge badge-${wr.work_status||'pending'}">${wr.work_status||'—'}</span></td>
+            <td style="font-weight:700">${formatCurrency(wr.final_amount)}</td>
+            <td>${hasIssue?`<span style="color:var(--red);font-weight:600;font-size:11px">⚠️ ${wr.issues_logged.substring(0,40)}</span>`:'—'}</td>
+            <td><button onclick="openRectForBooking(${bk?.id},'${(bk?.customers?.name||'').replace(/'/g,'')}')" style="padding:4px 10px;background:var(--rbg);color:var(--red);border:1px solid #fca5a5;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Flag</button></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
 }
 
-function switchPage(page,el){
-  document.querySelectorAll('.bn').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.getElementById('page-'+page).classList.add('on');
-  if(page==='upcoming')loadUpcomingPage();
+// ── RECTIFICATIONS ────────────────────────────────────────────
+async function loadRectifications(){
+  const status=document.getElementById('rect-status').value;
+  const segId=document.getElementById('rect-seg').value;
+  const from=document.getElementById('rect-from').value;
+  const to=document.getElementById('rect-to').value;
+  const container=document.getElementById('rect-container');
+  container.innerHTML='<div class="ld"><div class="sp"></div></div>';
+
+  let q=db.from('rectifications').select(`
+    *,
+    bookings(id,customers(name,phone,place),slots(date,segments(name))),
+    reporter:users!reported_by(name),
+    resolver:users!resolved_by(name)
+  `).order('created_at',{ascending:false}).limit(200);
+  if(status) q=q.eq('status',status);
+  if(from)   q=q.gte('created_at',from);
+  if(to)     q=q.lte('created_at',to+'T23:59:59');
+
+  let{data}=await q;
+  let rects=data||[];
+  if(segId) rects=rects.filter(r=>String(r.bookings?.slots?.segment_id)=== segId ||
+    allSegments.find(s=>String(s.id)===segId&&r.bookings?.slots?.segments?.name===s.name));
+
+  if(!rects.length){container.innerHTML='<div class="ld">No rectifications found.</div>';return;}
+
+  container.innerHTML=`<div class="dt-wrap"><table class="dt">
+    <thead><tr>${['#','Booking','Customer','Segment','Date','Issue','Status','Rect Date','Action'].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rects.map(r=>`<tr>
+      <td style="font-weight:700;color:var(--red)">#${r.id}</td>
+      <td style="font-weight:700;color:var(--blue)">#${r.booking_id}</td>
+      <td><div style="font-weight:600">${r.bookings?.customers?.name||'—'}</div><div style="font-size:11px;color:var(--slate-400)">${r.bookings?.customers?.phone||''}</div></td>
+      <td><span style="background:var(--alight);color:var(--adark);padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700">${r.bookings?.slots?.segments?.name||'—'}</span></td>
+      <td style="font-size:12px">${formatDate(r.bookings?.slots?.date)}</td>
+      <td style="max-width:200px"><div style="font-size:12px;color:var(--slate-700)">${r.issue_desc}</div>${r.resolution?`<div style="font-size:11px;color:var(--green);margin-top:3px">✓ ${r.resolution}</div>`:''}</td>
+      <td><span class="badge b-${r.status}">${r.status.replace('_',' ')}</span></td>
+      <td style="font-size:12px">${r.rectification_date?formatDate(r.rectification_date):'—'}</td>
+      <td>${r.status!=='closed'&&r.status!=='resolved'
+          ?'<button onclick="openResolveRect('+r.id+')" style="padding:4px 10px;background:var(--gbg);color:var(--green);border:1px solid var(--gbd);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">Resolve</button>'
+          :'<span style="font-size:11px;color:var(--slate-400)">'+(r.resolver?.name||'Done')+'</span>'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
 }
 
-function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
-function fmtTime(t){if(!t)return'—';const[h,m]=t.split(':');const hr=parseInt(h);return`${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`;}
-function fmtCur(n){if(n===null||n===undefined)return'₹0';return'₹'+Number(n).toLocaleString('en-IN');}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+async function openRectForBooking(bookingId,customerName){
+  document.getElementById('rect-booking-id').value=bookingId||'';
+  document.getElementById('rect-issue').value='';
+  document.getElementById('rect-fix-date').value='';
+  document.getElementById('rect-new-status').value='open';
+  document.getElementById('rect-booking-preview').innerHTML=bookingId?`<span style="color:var(--green);font-weight:600">✓ Booking #${bookingId} — ${customerName}</span>`:'';
+  openModal('modal-add-rect');
+}
+
+function openAddRect(){
+  document.getElementById('rect-booking-id').value='';
+  document.getElementById('rect-booking-preview').innerHTML='';
+  document.getElementById('rect-issue').value='';
+  document.getElementById('rect-fix-date').value='';
+  document.getElementById('rect-new-status').value='open';
+  openModal('modal-add-rect');
+}
+
+async function lookupBooking(){
+  const id=document.getElementById('rect-booking-id').value;
+  if(!id){return;}
+  const{data}=await db.from('bookings').select('id,customers(name,phone),slots(date,segments(name))').eq('id',parseInt(id)).single();
+  const prev=document.getElementById('rect-booking-preview');
+  if(data) prev.innerHTML=`<span style="color:var(--green);font-weight:600">✓ #${data.id} — ${data.customers?.name} · ${data.slots?.segments?.name} · ${formatDate(data.slots?.date)}</span>`;
+  else prev.innerHTML=`<span style="color:var(--red)">Booking not found</span>`;
+}
+
+async function saveRect(){
+  const bookingId=parseInt(document.getElementById('rect-booking-id').value);
+  const issue=document.getElementById('rect-issue').value.trim();
+  const fixDate=document.getElementById('rect-fix-date').value||null;
+  const status=document.getElementById('rect-new-status').value;
+  if(!bookingId||!issue){toast('Booking ID and issue description required','error');return;}
+  const btn=document.getElementById('rect-save-btn');
+  btn.disabled=true;btn.textContent='Saving…';
+  const{error}=await db.from('rectifications').insert({booking_id:bookingId,issue_desc:issue,reported_by:currentUser.id,status,rectification_date:fixDate});
+  if(error){toast(error.message,'error');btn.disabled=false;btn.textContent='⚠️ Log Issue';return;}
+  toast('Issue logged!');
+  closeModal('modal-add-rect');
+  loadRectifications();
+  btn.disabled=false;btn.textContent='⚠️ Log Issue';
+}
+
+function openResolveRect(id){
+  document.getElementById('resolve-rect-id').value=id;
+  document.getElementById('resolve-notes').value='';
+  document.getElementById('resolve-status').value='resolved';
+  openModal('modal-resolve-rect');
+}
+
+async function saveResolve(){
+  const id=parseInt(document.getElementById('resolve-rect-id').value);
+  const notes=document.getElementById('resolve-notes').value.trim();
+  const status=document.getElementById('resolve-status').value;
+  if(!notes){toast('Please add resolution notes','error');return;}
+  const btn=document.getElementById('resolve-save-btn');
+  btn.disabled=true;btn.textContent='Saving…';
+  const{error}=await db.from('rectifications').update({resolution:notes,status,resolved_by:currentUser.id,resolved_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){toast(error.message,'error');btn.disabled=false;btn.textContent='✅ Save Resolution';return;}
+  toast('Issue resolved!');
+  closeModal('modal-resolve-rect');
+  loadRectifications();
+  btn.disabled=false;btn.textContent='✅ Save Resolution';
+}
+
+// ── VIEW SWITCHER ─────────────────────────────────────────────
+function showView(view,el){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  const titles={registry:['Technician Registry','All field staff and their segments'],analysis:['Technician Analysis','Performance by segment and date range'],dailyreview:['Daily Review','End of day — all jobs per technician'],rectifications:['Rectifications','Issues flagged for follow-up']};
+  document.getElementById('page-title').textContent=titles[view][0];
+  document.getElementById('page-sub').textContent=titles[view][1];
+  if(view==='analysis')loadAnalysis();
+  if(view==='dailyreview')loadDailyReview();
+  if(view==='rectifications')loadRectifications();
+}
 </script>
 </body>
 </html>
